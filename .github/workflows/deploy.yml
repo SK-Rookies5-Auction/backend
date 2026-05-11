@@ -4,16 +4,13 @@ on:
   push:
     branches:
       - main
+      - develop
       - ci/cd
   workflow_dispatch:
 
 env:
   AWS_REGION: ap-northeast-2
   BACKEND_IMAGE_PARAM: /rookies5-macta/dev/infra/BACKEND_IMAGE
-  DB_URL: ${{ secrets.DB_URL }}
-  DB_USERNAME: ${{ secrets.DB_USERNAME }}
-  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-  JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
 jobs:
   deploy:
@@ -21,7 +18,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Backend Repository
+        uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -57,6 +55,45 @@ jobs:
             --value "${{ steps.build-image.outputs.image }}" \
             --overwrite
 
+      - name: Update Backend Runtime Secrets in SSM
+        run: |
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/DB_URL" \
+            --type SecureString \
+            --value "${{ secrets.DB_URL }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/DB_USERNAME" \
+            --type SecureString \
+            --value "${{ secrets.DB_USERNAME }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/DB_PASSWORD" \
+            --type SecureString \
+            --value "${{ secrets.DB_PASSWORD }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/JWT_SECRET" \
+            --type SecureString \
+            --value "${{ secrets.JWT_SECRET }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/AWS_REGION" \
+            --type String \
+            --value "${{ env.AWS_REGION }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/S3_BUCKET_NAME" \
+            --type SecureString \
+            --value "${{ secrets.S3_BUCKET_NAME }}" \
+            --overwrite
+
       - name: Checkout Infra Repository
         uses: actions/checkout@v4
         with:
@@ -64,18 +101,18 @@ jobs:
           token: ${{ secrets.ARGOCD_GIT_TOKEN }}
           path: infra-repo
 
-      - name: Update k8s
+      - name: Update Backend Manifest Image
         run: |
           cd infra-repo
           sed -i "s|image: .*|image: ${{ steps.build-image.outputs.image }}|g" k8s/backend/backend.yaml
 
-      - name: Commit and Push Changes
+      - name: Commit and Push Manifest
         run: |
           cd infra-repo
           git config user.name "github-actions"
           git config user.email "action@github.com"
           git add k8s/backend/backend.yaml
-
+          
           if ! git diff --cached --quiet; then
             git commit -m "chore: update backend image to ${{ github.sha }} [skip ci]"
             git push origin main
@@ -89,14 +126,12 @@ jobs:
             --region "${{ env.AWS_REGION }}" \
             --name "${{ secrets.EKS_CLUSTER_NAME }}"
 
-      - name: Apply Backend Runtime Secret
+      - name: Refresh Backend ExternalSecret
         run: |
-          kubectl create secret generic backend-secret \
-            --from-literal=DB_URL="${DB_URL}" \
-            --from-literal=DB_USERNAME="${DB_USERNAME}" \
-            --from-literal=DB_PASSWORD="${DB_PASSWORD}" \
-            --from-literal=JWT_SECRET="${JWT_SECRET}" \
-            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl annotate externalsecret rookies5-macta-backend-secret \
+            -n rookies5-macta \
+            force-sync="$(date +%s)" \
+            --overwrite
 
       - name: Apply ArgoCD Application
         run: |
