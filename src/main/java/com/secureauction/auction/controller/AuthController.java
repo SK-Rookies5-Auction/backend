@@ -1,10 +1,10 @@
-package com.secureauction.auction.domain.user.controller;
+package com.secureauction.auction.controller;
 
-import com.secureauction.auction.domain.user.dto.request.LoginRequest;
-import com.secureauction.auction.domain.user.dto.request.SignUpRequest;
-import com.secureauction.auction.domain.user.dto.response.LoginResponse;
-import com.secureauction.auction.domain.user.service.AuthService;
 import com.secureauction.auction.dto.ApiResponse;
+import com.secureauction.auction.dto.LoginRequest;
+import com.secureauction.auction.dto.LoginResponse;
+import com.secureauction.auction.dto.SignUpRequest;
+import com.secureauction.auction.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;

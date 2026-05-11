@@ -1,14 +1,14 @@
-package com.secureauction.auction.domain.user.service;
+package com.secureauction.auction.service;
 
-import com.secureauction.auction.domain.user.dto.request.LoginRequest;
-import com.secureauction.auction.domain.user.dto.request.SignUpRequest;
-import com.secureauction.auction.domain.user.dto.response.LoginResponse;
 import com.secureauction.auction.domain.User;
 import com.secureauction.auction.domain.UserRole;
+import com.secureauction.auction.dto.LoginRequest;
+import com.secureauction.auction.dto.LoginResponse;
+import com.secureauction.auction.dto.SignUpRequest;
 import com.secureauction.auction.exception.BusinessException;
 import com.secureauction.auction.exception.ErrorCode;
-import com.secureauction.auction.domain.user.repository.UserRepository;
 import com.secureauction.auction.global.security.JwtTokenProvider;
+import com.secureauction.auction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,6 @@ public class AuthService {
 
     @Transactional
     public void signUp(SignUpRequest request) {
-        // 명세서 4. 예외처리(DUPLICATE_RESOURCE) 검증 로직
         if (userRepository.existsByLoginId(request.getLoginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_RESOURCE);
         }
@@ -49,7 +48,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByLoginId(request.getLoginId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PASSWORD)); // Using INVALID_PASSWORD for bad login
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PASSWORD));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);

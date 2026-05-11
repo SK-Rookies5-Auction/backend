@@ -1,4 +1,4 @@
-package com.secureauction.auction.domain.user.dto.response;
+package com.secureauction.auction.dto;
 
 import com.secureauction.auction.domain.User;
 import lombok.Builder;

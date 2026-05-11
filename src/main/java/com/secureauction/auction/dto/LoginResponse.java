@@ -1,4 +1,4 @@
-package com.secureauction.auction.domain.user.dto.response;
+package com.secureauction.auction.dto;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -13,8 +13,8 @@ public class LoginResponse {
     @Builder
     public static class UserDto {
         private Long id;
-        private String role;
         private String nickname;
+        private String role;
         private String email;
     }
 }

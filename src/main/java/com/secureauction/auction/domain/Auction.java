@@ -6,6 +6,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "auctions")
@@ -55,11 +57,11 @@ public class Auction {
     private LocalDateTime endTime;
 
     @Builder.Default
-    @Column(name = "view_count")
+    @Column(name = "view_count", nullable = false)
     private Integer viewCount = 0;
 
     @Builder.Default
-    @Column(name = "like_count")
+    @Column(name = "like_count", nullable = false)
     private Integer likeCount = 0;
 
     @Version
@@ -69,6 +71,14 @@ public class Auction {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "auction", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Picture> pictures = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "auction", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments = new ArrayList<>();
 
     public void updateCurrentPrice(Long newPrice) {
         this.currentPrice = newPrice;
@@ -81,5 +91,9 @@ public class Auction {
 
     public void updateStatus(AuctionStatus status) {
         this.status = status;
+    }
+
+    public void increaseViewCount() {
+        this.viewCount++;
     }
 }

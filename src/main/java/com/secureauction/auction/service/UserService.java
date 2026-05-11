@@ -1,13 +1,13 @@
-package com.secureauction.auction.domain.user.service;
+package com.secureauction.auction.service;
 
-import com.secureauction.auction.domain.user.dto.request.PasswordUpdateRequest;
-import com.secureauction.auction.domain.user.dto.request.UserUpdateRequest;
-import com.secureauction.auction.domain.user.dto.response.UserInfoResponse;
-import com.secureauction.auction.domain.user.dto.response.UserSummaryResponse;
 import com.secureauction.auction.domain.User;
-import com.secureauction.auction.domain.user.repository.UserRepository;
+import com.secureauction.auction.dto.PasswordUpdateRequest;
+import com.secureauction.auction.dto.UserInfoResponse;
+import com.secureauction.auction.dto.UserSummaryResponse;
+import com.secureauction.auction.dto.UserUpdateRequest;
 import com.secureauction.auction.exception.BusinessException;
 import com.secureauction.auction.exception.ErrorCode;
+import com.secureauction.auction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,8 +22,6 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserSummaryResponse getUserSummary(Long userId) {
-        // TODO: 다른 팀원들이 AuctionRepository, BidRepository를 만들면
-        // 여기서 의존성 주입을 받아 count 쿼리를 실행하여 실제 데이터를 채워 넣습니다.
         return UserSummaryResponse.builder()
                 .biddingCount(0)
                 .wonCount(0)
@@ -60,7 +58,6 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
-        // 닉네임 중복 검사 (본인 닉네임과 다를 경우에만)
         if (!user.getNickname().equals(request.getNickname()) && userRepository.existsByNickname(request.getNickname())) {
             throw new BusinessException(ErrorCode.DUPLICATE_RESOURCE);
         }

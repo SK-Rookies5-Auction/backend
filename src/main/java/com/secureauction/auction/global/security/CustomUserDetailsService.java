@@ -1,7 +1,7 @@
 package com.secureauction.auction.global.security;
 
 import com.secureauction.auction.domain.User;
-import com.secureauction.auction.domain.user.repository.UserRepository;
+import com.secureauction.auction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

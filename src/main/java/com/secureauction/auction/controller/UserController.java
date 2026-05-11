@@ -1,12 +1,8 @@
-package com.secureauction.auction.domain.user.controller;
+package com.secureauction.auction.controller;
 
-import com.secureauction.auction.domain.user.dto.request.PasswordUpdateRequest;
-import com.secureauction.auction.domain.user.dto.request.UserUpdateRequest;
-import com.secureauction.auction.domain.user.dto.response.UserInfoResponse;
-import com.secureauction.auction.domain.user.dto.response.UserSummaryResponse;
-import com.secureauction.auction.domain.user.service.UserService;
-import com.secureauction.auction.dto.ApiResponse;
+import com.secureauction.auction.dto.*;
 import com.secureauction.auction.global.security.CustomUserDetails;
+import com.secureauction.auction.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -46,7 +42,4 @@ public class UserController {
         userService.updateUserInfo(userDetails.getUser().getId(), request);
         return ApiResponse.success(null, "회원 정보가 수정되었습니다.");
     }
-
-    // TODO: 경매 목록(me/auctions), 입찰 내역(me/bids) 등은
-    // Role 2, 3 담당 팀원의 Repository를 의존성 주입받아 처리해야 합니다.
 }
