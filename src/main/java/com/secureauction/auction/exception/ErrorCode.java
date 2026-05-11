@@ -14,7 +14,9 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "권한 부족"),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "경매물품 혹은 사용자를 찾을 수 없음"),
     BID_CONFLICT(HttpStatus.CONFLICT, "동시 입찰 충돌"),
-    ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 결제/배송/수령이 완료된 상태");
+    ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 결제/배송/수령이 완료된 상태"),
+    DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "이미 존재하는 아이디나 닉네임입니다."),
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
 
     private final HttpStatus status;
     private final String message;
