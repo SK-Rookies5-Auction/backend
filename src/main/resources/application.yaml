@@ -1,3 +1,17 @@
 spring:
   application:
     name: auction
+  datasource:
+    url: jdbc:mariadb://localhost:3306/auction_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: maria
+    driver-class-name: org.mariadb.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MariaDBDialect
