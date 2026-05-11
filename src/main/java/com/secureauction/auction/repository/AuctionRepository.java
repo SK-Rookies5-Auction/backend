@@ -1,0 +1,16 @@
+package com.secureauction.auction.repository;
+
+import com.secureauction.auction.domain.Auction;
+import com.secureauction.auction.domain.AuctionStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public interface AuctionRepository extends JpaRepository<Auction, Long> {
+    
+    @Query("SELECT a FROM Auction a WHERE a.status = :status AND a.endTime <= :now")
+    List<Auction> findAllByStatusAndEndTimeBefore(@Param("status") AuctionStatus status, @Param("now") LocalDateTime now);
+}
