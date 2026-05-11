@@ -83,6 +83,24 @@ jobs:
             --overwrite
           aws ssm put-parameter \
             --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/REDIS_HOST" \
+            --type String \
+            --value "${{ secrets.REDIS_HOST }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/REDIS_PORT" \
+            --type String \
+            --value "${{ secrets.REDIS_PORT }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/REDIS_PASSWORD" \
+            --type SecureString \
+            --value "${{ secrets.REDIS_PASSWORD }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
             --name "/rookies5-macta/dev/backend/AWS_REGION" \
             --type String \
             --value "${{ env.AWS_REGION }}" \
