@@ -1,0 +1,9 @@
+target/
+build/
+.git/
+.idea/
+.vscode/
+.mvn/wrapper/maven-wrapper.jar
+*.iml
+.env
+mysql
