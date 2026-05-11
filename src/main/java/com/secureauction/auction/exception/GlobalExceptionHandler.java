@@ -6,6 +6,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 @Slf4j
 @RestControllerAdvice
@@ -35,5 +36,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(500)
                 .body(ApiResponse.error("서버 내부 오류가 발생했습니다."));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
+        String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
+        log.error("ValidationException: {}", errorMessage);
+        return ResponseEntity
+                .status(400)
+                .body(ApiResponse.error(errorMessage));
     }
 }
