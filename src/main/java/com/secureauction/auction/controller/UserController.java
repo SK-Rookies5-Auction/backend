@@ -5,8 +5,14 @@ import com.secureauction.auction.global.security.CustomUserDetails;
 import com.secureauction.auction.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -41,5 +47,28 @@ public class UserController {
             @Valid @RequestBody UserUpdateRequest request) {
         userService.updateUserInfo(userDetails.getUser().getId(), request);
         return ApiResponse.success(null, "회원 정보가 수정되었습니다.");
+    }
+
+    @GetMapping("/me/likes")
+    public ApiResponse<Object> getMyLikes(
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Page<AuctionDto.LikeListResponse> resultPage = userService.getMyWishlist(userDetails.getUser(), pageable);
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("data", resultPage.getContent());
+        responseData.put("page_info", Map.of(
+                "current_page", resultPage.getNumber(),
+                "page_size", resultPage.getSize(),
+                "total_pages", resultPage.getTotalPages(),
+                "total_elements", resultPage.getTotalElements(),
+                "is_first", resultPage.isFirst(),
+                "is_last", resultPage.isLast(),
+                "has_next", resultPage.hasNext(),
+                "has_previous", resultPage.hasPrevious()
+        ));
+
+        return ApiResponse.success(responseData, "마이페이지 관심 내역을 성공적으로 조회했습니다.");
     }
 }
