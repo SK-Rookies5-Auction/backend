@@ -1,10 +1,6 @@
 package com.secureauction.auction.service;
 
-import com.secureauction.auction.domain.Auction;
-import com.secureauction.auction.domain.AuctionStatus;
-import com.secureauction.auction.domain.Payment;
-import com.secureauction.auction.domain.PaymentStatus;
-import com.secureauction.auction.domain.User;
+import com.secureauction.auction.domain.*;
 import com.secureauction.auction.dto.PaymentRequest;
 import com.secureauction.auction.exception.BusinessException;
 import com.secureauction.auction.exception.ErrorCode;
@@ -60,12 +56,12 @@ public class TradeService {
         payment.complete();
         auction.updateStatus(AuctionStatus.PAID);
 
-        // ★ [알림 추가] 낙찰자가 결제를 마쳤으므로 판매자에게 알림을 쏩니다.
+        // [알림 추가] 낙찰자가 결제를 마쳤으므로 판매자에게 알림을 쏩니다.
         notificationService.createNotification(
                 auction.getSeller(), // 수신자: 판매자
                 NotificationType.SOLD, // 타입: SOLD(판매 완료/결제 완료)
                 String.format("[판매 완료] '%s' 상품이 판매되었습니다.", auction.getTitle()),
-                "/auctions/" + auctionId
+                "/auctions/" + auction.getId()
         );
     }
 
