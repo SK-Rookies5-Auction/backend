@@ -53,7 +53,7 @@ public class BidServiceConcurrencyTest {
                 .seller(seller)
                 .title("동시성 테스트 물품")
                 .description("설명")
-                .category(Category.ELECTRONIC)
+                .category(Category.DIGITAL_DEVICES)
                 .startPrice(10000L)
                 .currentPrice(10000L)
                 .status(AuctionStatus.LIVE)
