@@ -7,4 +7,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PaymentRequest {
     private Long auctionId;
+    private Long amount;
 }
