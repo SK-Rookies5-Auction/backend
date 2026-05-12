@@ -3,6 +3,7 @@ package com.secureauction.auction.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -37,7 +38,7 @@ public class Auction {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private Category category;
 
     @Column(name = "start_price", nullable = false)
@@ -72,6 +73,10 @@ public class Auction {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
     @Builder.Default
     @OneToMany(mappedBy = "auction", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Picture> pictures = new ArrayList<>();
@@ -79,6 +84,10 @@ public class Auction {
     @Builder.Default
     @OneToMany(mappedBy = "auction", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "auction", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Bid> bids = new ArrayList<>();
 
     public void updateCurrentPrice(Long newPrice) {
         this.currentPrice = newPrice;

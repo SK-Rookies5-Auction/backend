@@ -21,6 +21,7 @@ public class TradeService {
 
     private final AuctionRepository auctionRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService;
 
     /**
      * 낙찰자 결제 (PENDING -> PAID)
@@ -58,6 +59,14 @@ public class TradeService {
         // 보안 검증이 완료된 DB의 currentPrice를 기준으로 최종 처리
         payment.complete();
         auction.updateStatus(AuctionStatus.PAID);
+
+        // ★ [알림 추가] 낙찰자가 결제를 마쳤으므로 판매자에게 알림을 쏩니다.
+        notificationService.createNotification(
+                auction.getSeller(), // 수신자: 판매자
+                NotificationType.SOLD, // 타입: SOLD(판매 완료/결제 완료)
+                String.format("[판매 완료] '%s' 상품이 판매되었습니다.", auction.getTitle()),
+                "/auctions/" + auctionId
+        );
     }
 
     /**

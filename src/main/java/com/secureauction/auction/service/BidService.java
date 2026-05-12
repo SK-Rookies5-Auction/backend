@@ -1,9 +1,6 @@
 package com.secureauction.auction.service;
 
-import com.secureauction.auction.domain.Auction;
-import com.secureauction.auction.domain.AuctionStatus;
-import com.secureauction.auction.domain.Bid;
-import com.secureauction.auction.domain.User;
+import com.secureauction.auction.domain.*;
 import com.secureauction.auction.exception.BusinessException;
 import com.secureauction.auction.exception.ErrorCode;
 import com.secureauction.auction.repository.AuctionRepository;
@@ -12,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -19,6 +18,7 @@ public class BidService {
 
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public Long placeBid(Long auctionId, User bidder, Long bidPrice) {
@@ -41,6 +41,9 @@ public class BidService {
             throw new BusinessException(ErrorCode.SELF_BID_NOT_ALLOWED);
         }
 
+        // [알림 보내기 위함]
+        Optional<Bid> lastHighBid = bidRepository.findFirstByAuctionOrderByPriceDesc(auction);
+
         // 5. 최고가 갱신 (Optimistic Lock @Version applied in Auction entity)
         auction.updateCurrentPrice(bidPrice);
 
@@ -52,6 +55,21 @@ public class BidService {
                 .build();
         
         bidRepository.save(bid);
+
+        // 7. [알림 로직 추가] 밀려난 사람에게 알림 쏘기
+        if (lastHighBid.isPresent()) {
+            User previousBidder = lastHighBid.get().getUser();
+
+            // 내가 내 기록을 갱신하는 게 아닐 때만 알림 전송 (중복 입찰 시 스팸 방지)
+            if (!previousBidder.getId().equals(bidder.getId())) {
+                notificationService.createNotification(
+                        previousBidder, // 수신자: 밀려난 1등
+                        NotificationType.OUTBID, // 타입: 상위 입찰 발생
+                        String.format("[%s] 상품에 더 높은 입찰가가 제시되었습니다.", auction.getTitle()),
+                        "/auctions/" + auctionId
+                );
+            }
+        }
 
         return bid.getId();
     }
