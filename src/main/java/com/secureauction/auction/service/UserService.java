@@ -1,14 +1,14 @@
 package com.secureauction.auction.service;
 
+import com.secureauction.auction.domain.Auction;
 import com.secureauction.auction.domain.User;
-import com.secureauction.auction.dto.PasswordUpdateRequest;
-import com.secureauction.auction.dto.UserInfoResponse;
-import com.secureauction.auction.dto.UserSummaryResponse;
-import com.secureauction.auction.dto.UserUpdateRequest;
+import com.secureauction.auction.dto.*;
 import com.secureauction.auction.exception.BusinessException;
 import com.secureauction.auction.exception.ErrorCode;
+import com.secureauction.auction.repository.AuctionLikeRepository;
 import com.secureauction.auction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +19,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuctionLikeRepository auctionLikeRepository;
+    private final ImageService imageService;
 
     @Transactional(readOnly = true)
     public UserSummaryResponse getUserSummary(Long userId) {
@@ -63,5 +65,29 @@ public class UserService {
         }
 
         user.updateInfo(request.getNickname());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AuctionDto.LikeListResponse> getMyWishlist(User user, Pageable pageable) {
+        return auctionLikeRepository.findByUser(user, pageable)
+                .map(like -> {
+                    Auction auction = like.getAuction();
+
+                    // 기존 로직과 동일하게 imageService를 사용하여 URL을 생성합니다.
+                    String mainUrl = auction.getPictures().stream()
+                            .filter(p -> Boolean.TRUE.equals(p.getIsMain()))
+                            .findFirst()
+                            .map(p -> imageService.createPresignedUrl(p.getImageKey()))
+                            .orElse(null);
+
+                    return AuctionDto.LikeListResponse.builder()
+                            .auctionId(auction.getId())
+                            .title(auction.getTitle())
+                            .currentPrice(auction.getCurrentPrice())
+                            .status(auction.getStatus().name())
+                            .likeCount(auction.getLikeCount())
+                            .mainPictureUrl(mainUrl)
+                            .build();
+                });
     }
 }

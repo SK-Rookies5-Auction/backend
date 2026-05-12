@@ -45,4 +45,13 @@ public class AuctionController {
         AuctionDto.DetailResponse response = auctionService.getAuctionDetail(id);
         return ApiResponse.success(response, "경매 상세 정보를 성공적으로 조회했습니다.");
     }
+
+    @PostMapping("/{id}/likes")
+    public ApiResponse<AuctionDto.LikeToggleResponse> toggleLike(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        AuctionDto.LikeToggleResponse response = auctionService.toggleLike(id, userDetails.getUser());
+        return ApiResponse.success(response, "관심 상품 상태가 업데이트되었습니다.");
+    }
 }
