@@ -2,6 +2,7 @@ package com.secureauction.auction.service;
 
 import com.secureauction.auction.domain.*;
 import com.secureauction.auction.dto.AuctionDto;
+import com.secureauction.auction.repository.AuctionLikeRepository;
 import com.secureauction.auction.repository.AuctionRepository;
 import com.secureauction.auction.repository.PictureRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,6 +21,8 @@ public class AuctionService {
 
     private final AuctionRepository auctionRepository;
     private final PictureRepository pictureRepository;
+    private final ImageService imageService;
+    private final AuctionLikeRepository auctionLikeRepository;
 
     /**
      * [등록] 경매 상품 등록
@@ -67,7 +71,7 @@ public class AuctionService {
         return auctionRepository.findAll().stream().map(auction -> {
             String mainUrl = auction.getPictures().stream()
                     .filter(Picture::getIsMain)
-                    .map(Picture::getImageUrl)
+                    .map(picture -> imageService.createPresignedUrl(picture.getImageKey()))
                     .findFirst()
                     .orElse(null);
 
@@ -97,7 +101,7 @@ public class AuctionService {
 
         List<AuctionDto.PictureInfo> pictureInfos = auction.getPictures().stream()
                 .map(p -> AuctionDto.PictureInfo.builder()
-                        .url(p.getImageUrl())
+                        .url(imageService.createPresignedUrl(p.getImageKey()))
                         .imageKey(p.getImageKey())
                         .isMain(p.getIsMain())
                         .sortOrder(p.getSortOrder())
@@ -129,6 +133,31 @@ public class AuctionService {
                 .sellerNickname(auction.getSeller().getNickname())
                 .pictures(pictureInfos)
                 .biddingHistory(biddingHistory)
+                .build();
+    }
+
+    @Transactional
+    public AuctionDto.LikeToggleResponse toggleLike(Long auctionId, User user) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 경매 물품을 찾을 수 없습니다. ID: " + auctionId));
+
+        Optional<AuctionLike> auctionLike = auctionLikeRepository.findByUserAndAuction(user, auction);
+        boolean isLiked;
+
+        if (auctionLike.isPresent()) {
+            auctionLikeRepository.delete(auctionLike.get());
+            auction.decreaseLikeCount();
+            isLiked = false;
+        } else {
+            auctionLikeRepository.save(AuctionLike.builder().user(user).auction(auction).build());
+            auction.increaseLikeCount();
+            isLiked = true;
+        }
+
+        return AuctionDto.LikeToggleResponse.builder()
+                .auctionId(auctionId)
+                .likeCount(auction.getLikeCount())
+                .isLiked(isLiked)
                 .build();
     }
 }

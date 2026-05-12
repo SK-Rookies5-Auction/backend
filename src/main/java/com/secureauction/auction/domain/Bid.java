@@ -31,7 +31,7 @@ public class Bid {
     @Column(nullable = false)
     private Long price;
 
-    @LastModifiedDate
-    @Column(name = "updated_at", nullable = false)
+    @CreatedDate
+    @Column(name = "updated_at", nullable = false, updatable = false)
     private LocalDateTime updatedAt;
 }
