@@ -80,4 +80,26 @@ public class AuctionDto {
         private Long price;
         private LocalDateTime bidTime;
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LikeListResponse {
+        private Long auctionId;
+        private String title;
+        private Long currentPrice;
+        private String status;
+        private Integer likeCount;
+        private String mainPictureUrl;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class LikeToggleResponse {
+        private Long auctionId;
+        private Integer likeCount;
+        private Boolean isLiked;
+    }
 }
