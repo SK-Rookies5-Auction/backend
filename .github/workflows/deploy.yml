@@ -1,0 +1,174 @@
+name: Backend Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - ci/cd
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-2
+  BACKEND_IMAGE_PARAM: /rookies5-macta/dev/infra/BACKEND_IMAGE
+
+jobs:
+  deploy:
+    name: Build & Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Backend Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Docker Build & Push
+        id: build-image
+        env:
+          ECR: ${{ secrets.ECR_BACKEND_URI }}
+          TAG: ${{ github.sha }}
+        run: |
+          IMAGE="$ECR:$TAG"
+          docker build \
+            -t "$IMAGE" \
+            -t "$ECR:latest" \
+            .
+          docker push "$IMAGE"
+          docker push "$ECR:latest"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Update Backend Image in SSM
+        run: |
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "${{ env.BACKEND_IMAGE_PARAM }}" \
+            --type SecureString \
+            --value "${{ steps.build-image.outputs.image }}" \
+            --overwrite
+
+      - name: Update Backend Runtime Secrets in SSM
+        run: |
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/DB_URL" \
+            --type SecureString \
+            --value "${{ secrets.DB_URL }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/DB_USERNAME" \
+            --type SecureString \
+            --value "${{ secrets.DB_USERNAME }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/DB_PASSWORD" \
+            --type SecureString \
+            --value "${{ secrets.DB_PASSWORD }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/JWT_SECRET" \
+            --type SecureString \
+            --value "${{ secrets.JWT_SECRET }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/REDIS_HOST" \
+            --type String \
+            --value "${{ secrets.REDIS_HOST }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/REDIS_PORT" \
+            --type String \
+            --value "${{ secrets.REDIS_PORT }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/REDIS_PASSWORD" \
+            --type SecureString \
+            --value "${{ secrets.REDIS_PASSWORD }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/AWS_REGION" \
+            --type String \
+            --value "${{ env.AWS_REGION }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/S3_BUCKET_NAME" \
+            --type SecureString \
+            --value "${{ secrets.S3_BUCKET_NAME }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/AWS_S3_BASE_DIRECTORY" \
+            --type String \
+            --value "${{ secrets.AWS_S3_BASE_DIRECTORY }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES" \
+            --type String \
+            --value "${{ secrets.AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/AWS_S3_MAX_UPLOAD_SIZE" \
+            --type String \
+            --value "${{ secrets.AWS_S3_MAX_UPLOAD_SIZE }}" \
+            --overwrite
+
+      - name: Checkout Infra Repository
+        uses: actions/checkout@v4
+        with:
+          repository: SK-Rookies5-Auction/infra
+          token: ${{ secrets.ARGOCD_GIT_TOKEN }}
+          path: infra-repo
+
+      - name: Update Backend Manifest Image
+        run: |
+          cd infra-repo
+          sed -i "s|image: .*|image: ${{ steps.build-image.outputs.image }}|g" k8s/backend/backend.yaml
+
+      - name: Commit and Push Manifest
+        run: |
+          cd infra-repo
+          git config user.name "github-actions"
+          git config user.email "action@github.com"
+          git add k8s/backend/backend.yaml
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update backend image to ${{ github.sha }} [skip ci]"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "${{ env.AWS_REGION }}" \
+            --name "${{ secrets.EKS_CLUSTER_NAME }}"
+
+      - name: Refresh Backend ExternalSecret
+        run: |
+          kubectl annotate externalsecret rookies5-macta-backend-secret \
+            -n rookies5-macta \
+            force-sync="$(date +%s)" \
+            --overwrite
+
+      - name: Apply ArgoCD Application
+        run: |
+          kubectl apply -f infra-repo/argocd/backend-application.yml

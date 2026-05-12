@@ -8,6 +8,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+#  data:
+#    redis:
+#      host: ${REDIS_HOST}
+#      port: ${REDIS_PORT}
+#      password: ${REDIS_PASSWORD}
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -19,3 +25,14 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
+
+cloud:
+  aws:
+    s3:
+      region: ${AWS_REGION:ap-northeast-2}
+      bucket: ${AWS_S3_BUCKET:}
+      access-key: ${AWS_ACCESS_KEY:}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:}
+      base-directory: ${AWS_S3_BASE_DIRECTORY:auction-images}
+      presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES:10}
+      max-upload-size: ${AWS_S3_MAX_UPLOAD_SIZE:10485760}
