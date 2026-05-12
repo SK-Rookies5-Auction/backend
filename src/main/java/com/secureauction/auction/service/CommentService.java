@@ -2,6 +2,7 @@ package com.secureauction.auction.service;
 
 import com.secureauction.auction.domain.Auction;
 import com.secureauction.auction.domain.Comment;
+import com.secureauction.auction.domain.NotificationType;
 import com.secureauction.auction.domain.User;
 import com.secureauction.auction.dto.CommentDto;
 import com.secureauction.auction.repository.AuctionRepository;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 public class CommentService {
     private final CommentRepository commentRepository;
     private final AuctionRepository auctionRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public Long createComment(Long auctionId, CommentDto.CreateRequest request, User user) {
@@ -30,7 +32,19 @@ public class CommentService {
                 .content(request.getContent())
                 .build();
 
-        return commentRepository.save(comment).getId();
+        Comment savedComment = commentRepository.save(comment);
+
+        // 2. [알림 로직 추가] 판매자에게 알림 보내기
+        if (!auction.getSeller().getId().equals(user.getId())) {
+            notificationService.createNotification(
+                    auction.getSeller(), // 수신자: 판매자
+                    NotificationType.COMMENT, // 타입: 댓글 알림
+                    String.format("[%s] 상품에 새로운 문의가 등록되었습니다.", auction.getTitle()), // 내용
+                    "/auctions/" + auctionId // 클릭 시 이동할 URL
+            );
+        }
+
+        return savedComment.getId();
     }
 
     @Transactional(readOnly = true)

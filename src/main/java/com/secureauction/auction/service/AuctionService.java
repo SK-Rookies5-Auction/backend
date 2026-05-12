@@ -105,7 +105,14 @@ public class AuctionService {
                 .collect(Collectors.toList());
 
         // 입찰 기록 (나중에 추가 구현 가능)
-        List<AuctionDto.BidInfo> biddingHistory = new ArrayList<>();
+        List<AuctionDto.BidInfo> biddingHistory = auction.getBids().stream()
+                .map(bid -> AuctionDto.BidInfo.builder()
+                        .bidderNickname(bid.getUser().getNickname()) // 입찰자 닉네임
+                        .price(bid.getPrice())                      // 입찰 금액
+                        .bidTime(bid.getUpdatedAt())                // 입찰 시간
+                        .build())
+                .sorted((b1, b2) -> b2.getBidTime().compareTo(b1.getBidTime()))
+                .collect(Collectors.toList());
 
         return AuctionDto.DetailResponse.builder()
                 .id(auction.getId())
