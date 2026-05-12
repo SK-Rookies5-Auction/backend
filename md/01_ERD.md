@@ -64,7 +64,7 @@
 - **테이블 정보**:
   | 컬럼명 | 타입 | 제약 조건 | 설명 |
   | :--- | :--- | :--- | :--- |
-  | `id` | BIGINT | PK | 결제 고유 번호 |
+  | `id` | BIGINT | PK, AutoIncrement | 결제 고유 번호 |
   | `user_id` | BIGINT | FK (users.id), NN | 결제자 번호 |
   | `auction_id` | BIGINT | FK (auctions.id), NN | 대상 경매 번호 |
   | `final_price` | BIGINT | NOT NULL | 최종 결제 금액 |

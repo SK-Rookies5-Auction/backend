@@ -46,7 +46,6 @@ public class AuctionScheduler {
                         
                         // 결제 정보 생성 (PENDING 상태)
                         Payment payment = Payment.builder()
-                                .id(auction.getId()) // 간단히 경매 ID를 결제 ID로 사용 (요구사항에 맞춰 조정 가능)
                                 .user(highestBid.getUser())
                                 .auction(auction)
                                 .finalPrice(highestBid.getPrice())

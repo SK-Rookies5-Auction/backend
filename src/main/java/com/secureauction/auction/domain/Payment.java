@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 public class Payment {
 
     @Id
-    private Long id; // Assuming PK is provided or same as some other ID, 01_ERD says PK only.
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
