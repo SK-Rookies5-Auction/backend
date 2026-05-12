@@ -3,9 +3,12 @@ package com.secureauction.auction.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Getter
+@Setter
 @NoArgsConstructor
 public class SignUpRequest {
     @NotBlank(message = "아이디를 입력해주세요.")
