@@ -20,6 +20,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -102,7 +103,27 @@ public class ImageService {
         if (file.getSize() > properties.getMaxUploadSize()) {
             throw new BusinessException(ErrorCode.IMAGE_FILE_SIZE_EXCEEDED);
         }
-        if (!StringUtils.hasText(file.getContentType()) || !file.getContentType().startsWith("image/")) {
+
+        // 1. 헤더 기반 1차 검증
+        String contentType = file.getContentType();
+        if (!StringUtils.hasText(contentType) || !contentType.startsWith("image/")) {
+            throw new BusinessException(ErrorCode.INVALID_IMAGE_FILE_TYPE);
+        }
+
+        // 2. 확장자 기반 2차 검증 (화이트리스트 방식)
+        String originalFilename = file.getOriginalFilename();
+        if (!StringUtils.hasText(originalFilename)) {
+            throw new BusinessException(ErrorCode.INVALID_IMAGE_FILE_TYPE);
+        }
+
+        String extension = StringUtils.getFilenameExtension(originalFilename);
+        // NPE 방지: 확장자가 아예 없는 파일인 경우 튕겨냄
+        if (!StringUtils.hasText(extension)) {
+            throw new BusinessException(ErrorCode.INVALID_IMAGE_FILE_TYPE);
+        }
+
+        List<String> allowedExtensions = List.of("jpg", "jpeg", "png", "gif", "webp");
+        if (!allowedExtensions.contains(extension.toLowerCase())) {
             throw new BusinessException(ErrorCode.INVALID_IMAGE_FILE_TYPE);
         }
     }
