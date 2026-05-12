@@ -111,6 +111,24 @@ jobs:
             --type SecureString \
             --value "${{ secrets.S3_BUCKET_NAME }}" \
             --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/AWS_S3_BASE_DIRECTORY" \
+            --type String \
+            --value "${{ secrets.AWS_S3_BASE_DIRECTORY }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES" \
+            --type String \
+            --value "${{ secrets.AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES }}" \
+            --overwrite
+          aws ssm put-parameter \
+            --region "${{ env.AWS_REGION }}" \
+            --name "/rookies5-macta/dev/backend/AWS_S3_MAX_UPLOAD_SIZE" \
+            --type String \
+            --value "${{ secrets.AWS_S3_MAX_UPLOAD_SIZE }}" \
+            --overwrite
 
       - name: Checkout Infra Repository
         uses: actions/checkout@v4

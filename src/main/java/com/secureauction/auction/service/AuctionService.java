@@ -19,6 +19,7 @@ public class AuctionService {
 
     private final AuctionRepository auctionRepository;
     private final PictureRepository pictureRepository;
+    private final ImageService imageService;
 
     /**
      * [등록] 경매 상품 등록
@@ -67,7 +68,7 @@ public class AuctionService {
         return auctionRepository.findAll().stream().map(auction -> {
             String mainUrl = auction.getPictures().stream()
                     .filter(Picture::getIsMain)
-                    .map(Picture::getImageUrl)
+                    .map(picture -> imageService.createPresignedUrl(picture.getImageKey()))
                     .findFirst()
                     .orElse(null);
 
@@ -97,7 +98,7 @@ public class AuctionService {
 
         List<AuctionDto.PictureInfo> pictureInfos = auction.getPictures().stream()
                 .map(p -> AuctionDto.PictureInfo.builder()
-                        .url(p.getImageUrl())
+                        .url(imageService.createPresignedUrl(p.getImageKey()))
                         .imageKey(p.getImageKey())
                         .isMain(p.getIsMain())
                         .sortOrder(p.getSortOrder())
