@@ -7,7 +7,13 @@ import com.secureauction.auction.global.security.CustomUserDetails;
 import com.secureauction.auction.repository.AuctionLikeRepository;
 import com.secureauction.auction.repository.AuctionRepository;
 import com.secureauction.auction.repository.PictureRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -68,20 +74,61 @@ public class AuctionService {
     }
 
     /**
-     * 메인 페이지: 전체 경매 목록 조회
+     * 메인 페이지: 전체 경매 목록 조회 (필터링 및 정렬 지원)
      */
     @Transactional(readOnly = true)
-    public List<AuctionDto.ListResponse> getAuctionList() {
+    public Page<AuctionDto.ListResponse> getAuctionList(
+            String category, String q, Long minPrice, Long maxPrice, String sort, Pageable pageable) {
+        
         // 현재 로그인 사용자 식별
         User currentUser = null;
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
             currentUser = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         }
-
         final User finalUser = currentUser;
 
-        return auctionRepository.findAll().stream().map(auction -> {
+        // 정렬 조건 처리
+        Sort sortCondition = switch (sort) {
+            case "closing-soon" -> Sort.by(Sort.Direction.ASC, "endTime");
+            case "price-low" -> Sort.by(Sort.Direction.ASC, "currentPrice");
+            case "price-high" -> Sort.by(Sort.Direction.DESC, "currentPrice");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
+
+        Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sortCondition);
+
+        // 동적 쿼리 (Specification) 생성
+        Specification<Auction> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // 1. 상태 (기본적으로 LIVE 인 것만 조회)
+            predicates.add(cb.equal(root.get("status"), AuctionStatus.LIVE));
+
+            // 2. 카테고리 필터
+            if (category != null && !category.isEmpty()) {
+                try {
+                    predicates.add(cb.equal(root.get("category"), Category.valueOf(category)));
+                } catch (IllegalArgumentException ignored) {}
+            }
+
+            // 3. 검색어 필터 (제목)
+            if (q != null && !q.isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("title")), "%" + q.toLowerCase() + "%"));
+            }
+
+            // 4. 가격 범위 필터
+            if (minPrice != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("currentPrice"), minPrice));
+            }
+            if (maxPrice != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("currentPrice"), maxPrice));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return auctionRepository.findAll(spec, sortedPageable).map(auction -> {
             String mainUrl = auction.getPictures().stream()
                     .filter(Picture::getIsMain)
                     .map(picture -> imageService.createPresignedUrl(picture.getImageKey()))
@@ -102,7 +149,7 @@ public class AuctionService {
                     .isLiked(isLiked)
                     .sellerId(auction.getSeller().getId())
                     .build();
-        }).collect(Collectors.toList());
+        });
     }
 
     /**
