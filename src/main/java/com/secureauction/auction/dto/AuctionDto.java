@@ -55,6 +55,7 @@ public class AuctionDto {
         private LocalDateTime endTime;
         private Integer viewCount;
         private Integer likeCount;
+        private Long sellerId;
         private String sellerNickname;
         private List<PictureInfo> pictures;
         private List<BidInfo> biddingHistory;

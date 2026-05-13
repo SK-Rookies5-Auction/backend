@@ -132,6 +132,7 @@ public class AuctionService {
                 .viewCount(auction.getViewCount())
                 .likeCount(auction.getLikeCount())
                 .sellerNickname(auction.getSeller().getNickname())
+                .sellerId(auction.getSeller().getId())
                 .pictures(pictureInfos)
                 .biddingHistory(biddingHistory)
                 .build();
