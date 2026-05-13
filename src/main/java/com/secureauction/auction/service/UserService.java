@@ -50,11 +50,14 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserSummaryResponse getUserSummary(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
         return UserSummaryResponse.builder()
-                .biddingCount(0)
-                .wonCount(0)
-                .hostedCount(0)
-                .watchlistCount(0)
+                .biddingCount(Math.toIntExact(bidRepository.countDistinctAuctionsByUser(user)))
+                .wonCount(Math.toIntExact(auctionRepository.countByWinner(user)))
+                .hostedCount(Math.toIntExact(auctionRepository.countBySeller(user)))
+                .watchlistCount(Math.toIntExact(auctionLikeRepository.countByUser(user)))
                 .build();
     }
 

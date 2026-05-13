@@ -15,4 +15,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     Optional<Bid> findFirstByAuctionOrderByPriceDesc(Auction auction);
     @Query("SELECT DISTINCT b.auction FROM Bid b WHERE b.user = :user")
     Page<Auction> findBidAuctionsByUser(@Param("user") User user, Pageable pageable);
+
+    @Query("SELECT COUNT(DISTINCT b.auction.id) FROM Bid b WHERE b.user = :user")
+    long countDistinctAuctionsByUser(@Param("user") User user);
 }

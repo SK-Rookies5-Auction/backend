@@ -16,4 +16,6 @@ public interface AuctionLikeRepository extends JpaRepository<AuctionLike, Long> 
 
     @EntityGraph(attributePaths = {"auction"})
     Page<AuctionLike> findByUser(User user, Pageable pageable);
+
+    long countByUser(User user);
 }
