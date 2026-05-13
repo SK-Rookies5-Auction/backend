@@ -2,7 +2,7 @@ package com.secureauction.auction.scheduler;
 
 import com.secureauction.auction.domain.*;
 import com.secureauction.auction.repository.AuctionRepository;
-import com.secureauction.auction.service.AuctionInternalService;
+import com.secureauction.auction.service.AuctionService;
 import com.secureauction.auction.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,7 @@ import java.util.List;
 public class AuctionScheduler {
 
     private final AuctionRepository auctionRepository;
-    private final AuctionInternalService auctionInternalService;
+    private final AuctionService auctionService;
     private final NotificationService notificationService;
 
     @Scheduled(cron = "*/10 * * * * *") // 매 10초마다 실행
@@ -31,8 +31,8 @@ public class AuctionScheduler {
         
         for (Auction auction : expiredAuctions) {
             try {
-                // 별도 서비스의 REQUIRES_NEW 메서드를 호출하여 개별 트랜잭션 보장
-                auctionInternalService.closeAuctionIfExpired(auction.getId());
+                // 개별 트랜잭션으로 처리하여 한 건의 실패가 전체에 영향을 주지 않도록 함
+                auctionService.closeAuctionIfExpired(auction.getId());
             } catch (Exception e) {
                 log.error("Failed to close auction {}: {}", auction.getId(), e.getMessage());
             }
