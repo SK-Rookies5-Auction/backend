@@ -30,12 +30,12 @@ public class BidService {
 
         // 2. 경매 상태 확인 (LIVE 인지)
         if (auction.getStatus() != AuctionStatus.LIVE) {
-            throw new BusinessException(ErrorCode.ALREADY_PROCESSED);
+            throw new BusinessException(ErrorCode.AUCTION_CLOSED);
         }
 
         // 2-1. 경매 시간 확인 (마감 시간이 지났는지)
         if (auction.getEndTime().isBefore(LocalDateTime.now())) {
-            throw new BusinessException(ErrorCode.ALREADY_PROCESSED);
+            throw new BusinessException(ErrorCode.AUCTION_CLOSED);
         }
 
         // 3. 입찰 금액 확인 (price > current_price)
