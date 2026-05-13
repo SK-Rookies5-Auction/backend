@@ -28,5 +28,5 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
             @Param("end") LocalDateTime end
     );
 
-    Page<Auction> findByUser(User user, Pageable pageable);
+    Page<Auction> findBySeller(User Seller, Pageable pageable);
 }

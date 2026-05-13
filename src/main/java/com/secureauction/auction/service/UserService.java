@@ -95,7 +95,7 @@ public class UserService {
     // 5. 내가 등록한 경매 목록
     @Transactional(readOnly = true)
     public Page<AuctionDto.MyPageListResponse> getMyAuctions(User user, String status, Pageable pageable) {
-        return auctionRepository.findByUser(user, pageable)
+        return auctionRepository.findBySeller(user, pageable)
                 .map(this::convertToMyPageListResponse);
     }
 
