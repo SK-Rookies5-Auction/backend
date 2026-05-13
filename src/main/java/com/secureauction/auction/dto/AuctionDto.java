@@ -1,5 +1,6 @@
 package com.secureauction.auction.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,8 +20,13 @@ public class AuctionDto {
         private String description;
         private String category;
         private Long startPrice;
+        
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
         private LocalDateTime startTime;
+        
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
         private LocalDateTime endTime;
+        
         private List<PictureInfo> pictures;
     }
 
