@@ -16,7 +16,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -28,15 +27,14 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class AuctionService {
 
     private final AuctionRepository auctionRepository;
     private final PictureRepository pictureRepository;
     private final ImageService imageService;
     private final AuctionLikeRepository auctionLikeRepository;
-    private final BidRepository bidRepository;
-    private final PaymentRepository paymentRepository;
-    private final NotificationService notificationService;
+    private final AuctionInternalService auctionInternalService;
 
     /**
      * [등록] 경매 상품 등록
@@ -89,8 +87,8 @@ public class AuctionService {
         // 마감 시간이 지났는데 아직 LIVE 상태라면 즉시 종료 처리 시도
         if (auction.getStatus() == AuctionStatus.LIVE && auction.getEndTime().isBefore(LocalDateTime.now())) {
             try {
-                // 개별 트랜잭션으로 종료 처리 (다른 조회에 영향을 주지 않도록 함)
-                closeAuctionIfExpired(auction.getId());
+                // 프록시를 통한 호출로 REQUIRES_NEW 트랜잭션 보장
+                auctionInternalService.closeAuctionIfExpired(auction.getId());
                 // 변경된 상태(FINISHED, winner 등)를 반영하기 위해 재조회
                 auction = auctionRepository.findById(id).orElse(auction);
             } catch (Exception e) {
@@ -131,7 +129,10 @@ public class AuctionService {
                         .price(bid.getPrice())                      // 입찰 금액
                         .bidTime(bid.getUpdatedAt())                // 입찰 시간
                         .build())
-                .sorted((b1, b2) -> b2.getBidTime().compareTo(b1.getBidTime()))
+                .sorted((b1, b2) -> {
+                    if (b1.getBidTime() == null || b2.getBidTime() == null) return 0;
+                    return b2.getBidTime().compareTo(b1.getBidTime());
+                })
                 .collect(Collectors.toList());
 
         return AuctionDto.DetailResponse.builder()
@@ -155,60 +156,6 @@ public class AuctionService {
                 .pictures(pictureInfos)
                 .biddingHistory(biddingHistory)
                 .build();
-    }
-
-    /**
-     * 특정 경매의 종료 처리를 수행함.
-     * Propagation.REQUIRES_NEW를 사용하여 독립적인 트랜잭션에서 실행됨.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void closeAuctionIfExpired(Long auctionId) {
-        Auction auction = auctionRepository.findById(auctionId).orElse(null);
-        if (auction == null || auction.getStatus() != AuctionStatus.LIVE || auction.getEndTime().isAfter(LocalDateTime.now())) {
-            return;
-        }
-
-        log.info("Closing auction {}. Processing closure...", auctionId);
-
-        // 최고 입찰자 찾기
-        bidRepository.findFirstByAuctionOrderByPriceDesc(auction)
-            .ifPresentOrElse(
-                highestBid -> {
-                    // 낙찰자 확정
-                    auction.finish(highestBid.getUser());
-                    
-                    // 결제 정보 생성 (PENDING 상태)
-                    Payment payment = Payment.builder()
-                            .user(highestBid.getUser())
-                            .auction(auction)
-                            .finalPrice(highestBid.getPrice())
-                            .status(PaymentStatus.PENDING)
-                            .build();
-                    paymentRepository.save(payment);
-
-                    // 낙찰 알림 전송
-                    notificationService.createNotification(
-                            highestBid.getUser(),
-                            NotificationType.AUCTION_WON,
-                            String.format("[낙찰] '%s' 경매에 최종 낙찰되셨습니다!", auction.getTitle()),
-                            "/product/" + auction.getId()
-                    );
-                    log.info("Auction {} won by user {}.", auctionId, highestBid.getUser().getId());
-                },
-                () -> {
-                    // 유찰 처리
-                    auction.updateStatus(AuctionStatus.FINISHED);
-
-                    // 판매자에게 유찰 알림
-                    notificationService.createNotification(
-                            auction.getSeller(),
-                            NotificationType.AUCTION_ENDED,
-                            String.format("[유찰] '%s' 경매가 입찰자 없이 종료되었습니다.", auction.getTitle()),
-                            "/product/" + auction.getId()
-                    );
-                    log.info("Auction {} finished with no bids.", auctionId);
-                }
-            );
     }
 
     /**
@@ -266,6 +213,15 @@ public class AuctionService {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
+        // 좋아요 여부를 효율적으로 확인하기 위해 현재 유저의 좋아요 목록을 먼저 조회
+        List<Long> likedAuctionIds = new ArrayList<>();
+        if (finalUser != null) {
+            likedAuctionIds = auctionLikeRepository.findByUser(finalUser).stream()
+                    .map(like -> like.getAuction().getId())
+                    .collect(Collectors.toList());
+        }
+        final List<Long> finalLikedIds = likedAuctionIds;
+
         return auctionRepository.findAll(spec, sortedPageable).map(auction -> {
             String mainUrl = auction.getPictures().stream()
                     .filter(Picture::getIsMain)
@@ -273,7 +229,7 @@ public class AuctionService {
                     .findFirst()
                     .orElse(null);
 
-            boolean isLiked = finalUser != null && auctionLikeRepository.findByUserAndAuction(finalUser, auction).isPresent();
+            boolean isLiked = finalLikedIds.contains(auction.getId());
 
             return AuctionDto.ListResponse.builder()
                     .id(auction.getId())
