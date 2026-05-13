@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -29,6 +30,11 @@ public class BidService {
 
         // 2. 경매 상태 확인 (LIVE 인지)
         if (auction.getStatus() != AuctionStatus.LIVE) {
+            throw new BusinessException(ErrorCode.ALREADY_PROCESSED);
+        }
+
+        // 2-1. 경매 시간 확인 (마감 시간이 지났는지)
+        if (auction.getEndTime().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ErrorCode.ALREADY_PROCESSED);
         }
 
