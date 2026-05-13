@@ -2,6 +2,7 @@ package com.secureauction.auction.controller;
 
 import com.secureauction.auction.dto.ApiResponse;
 import com.secureauction.auction.dto.AuctionDto;
+import com.secureauction.auction.dto.AuctionStatsResponse;
 import com.secureauction.auction.global.security.CustomUserDetails;
 import com.secureauction.auction.service.AuctionService;
 import lombok.RequiredArgsConstructor;
@@ -53,5 +54,14 @@ public class AuctionController {
 
         AuctionDto.LikeToggleResponse response = auctionService.toggleLike(id, userDetails.getUser());
         return ApiResponse.success(response, "관심 상품 상태가 업데이트되었습니다.");
+    }
+
+    /**
+     * 메인 페이지 통계 정보 조회
+     */
+    @GetMapping("/stats")
+    public ApiResponse<AuctionStatsResponse> getAuctionStats() {
+        AuctionStatsResponse response = auctionService.getStats();
+        return ApiResponse.success(response, "경매 통계 정보를 성공적으로 조회했습니다.");
     }
 }

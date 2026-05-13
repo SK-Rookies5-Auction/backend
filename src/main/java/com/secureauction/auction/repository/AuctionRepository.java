@@ -10,6 +10,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AuctionRepository extends JpaRepository<Auction, Long> {
+
+    long countByStatus(AuctionStatus status);
+
+    long countByStatusAndEndTimeBetween(AuctionStatus status, LocalDateTime start, LocalDateTime end);
     
     @Query("SELECT a FROM Auction a WHERE a.status = :status AND a.endTime <= :now")
     List<Auction> findAllByStatusAndEndTimeBefore(@Param("status") AuctionStatus status, @Param("now") LocalDateTime now);

@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auctions").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auctions/stats").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auctions/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auctions/{auctionId:[0-9]+}/comments").permitAll()
                         .requestMatchers("/api/v1/users/**").authenticated()

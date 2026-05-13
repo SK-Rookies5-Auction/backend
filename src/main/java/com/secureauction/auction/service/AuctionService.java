@@ -2,6 +2,7 @@ package com.secureauction.auction.service;
 
 import com.secureauction.auction.domain.*;
 import com.secureauction.auction.dto.AuctionDto;
+import com.secureauction.auction.dto.AuctionStatsResponse;
 import com.secureauction.auction.repository.AuctionLikeRepository;
 import com.secureauction.auction.repository.AuctionRepository;
 import com.secureauction.auction.repository.PictureRepository;
@@ -158,6 +159,23 @@ public class AuctionService {
                 .auctionId(auctionId)
                 .likeCount(auction.getLikeCount())
                 .isLiked(isLiked)
+                .build();
+    }
+
+    /**
+     * 메인 페이지 통계 정보 조회
+     */
+    @Transactional(readOnly = true)
+    public AuctionStatsResponse getStats() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oneHourLater = now.plusHours(1);
+
+        long totalActive = auctionRepository.countByStatus(AuctionStatus.LIVE);
+        long endingSoon = auctionRepository.countByStatusAndEndTimeBetween(AuctionStatus.LIVE, now, oneHourLater);
+
+        return AuctionStatsResponse.builder()
+                .totalActive(totalActive)
+                .endingSoon(endingSoon)
                 .build();
     }
 }
