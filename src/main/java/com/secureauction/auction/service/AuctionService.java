@@ -3,10 +3,13 @@ package com.secureauction.auction.service;
 import com.secureauction.auction.domain.*;
 import com.secureauction.auction.dto.AuctionDto;
 import com.secureauction.auction.dto.AuctionStatsResponse;
+import com.secureauction.auction.global.security.CustomUserDetails;
 import com.secureauction.auction.repository.AuctionLikeRepository;
 import com.secureauction.auction.repository.AuctionRepository;
 import com.secureauction.auction.repository.PictureRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,12 +72,23 @@ public class AuctionService {
      */
     @Transactional(readOnly = true)
     public List<AuctionDto.ListResponse> getAuctionList() {
+        // 현재 로그인 사용자 식별
+        User currentUser = null;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
+            currentUser = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+        }
+
+        final User finalUser = currentUser;
+
         return auctionRepository.findAll().stream().map(auction -> {
             String mainUrl = auction.getPictures().stream()
                     .filter(Picture::getIsMain)
                     .map(picture -> imageService.createPresignedUrl(picture.getImageKey()))
                     .findFirst()
                     .orElse(null);
+
+            boolean isLiked = finalUser != null && auctionLikeRepository.findByUserAndAuction(finalUser, auction).isPresent();
 
             return AuctionDto.ListResponse.builder()
                     .id(auction.getId())
@@ -85,6 +99,8 @@ public class AuctionService {
                     .mainPictureUrl(mainUrl)
                     .startTime(auction.getStartTime())
                     .endTime(auction.getEndTime())
+                    .isLiked(isLiked)
+                    .sellerId(auction.getSeller().getId())
                     .build();
         }).collect(Collectors.toList());
     }
@@ -99,6 +115,14 @@ public class AuctionService {
 
         // 조회수 증가
         auction.increaseViewCount();
+
+        // 현재 로그인한 사용자의 좋아요 여부 확인
+        boolean isLiked = false;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
+            User currentUser = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+            isLiked = auctionLikeRepository.findByUserAndAuction(currentUser, auction).isPresent();
+        }
 
         List<AuctionDto.PictureInfo> pictureInfos = auction.getPictures().stream()
                 .map(p -> AuctionDto.PictureInfo.builder()
@@ -131,6 +155,7 @@ public class AuctionService {
                 .endTime(auction.getEndTime())
                 .viewCount(auction.getViewCount())
                 .likeCount(auction.getLikeCount())
+                .isLiked(isLiked)
                 .sellerNickname(auction.getSeller().getNickname())
                 .sellerId(auction.getSeller().getId())
                 .pictures(pictureInfos)

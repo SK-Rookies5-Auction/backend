@@ -37,6 +37,8 @@ public class AuctionDto {
         private String mainPictureUrl;
         private LocalDateTime startTime;
         private LocalDateTime endTime;
+        private Boolean isLiked;
+        private Long sellerId;
     }
 
     @Getter
@@ -55,6 +57,7 @@ public class AuctionDto {
         private LocalDateTime endTime;
         private Integer viewCount;
         private Integer likeCount;
+        private Boolean isLiked;
         private Long sellerId;
         private String sellerNickname;
         private List<PictureInfo> pictures;
