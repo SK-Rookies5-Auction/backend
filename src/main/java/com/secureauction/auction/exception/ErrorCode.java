@@ -22,6 +22,7 @@ public enum ErrorCode {
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
     BID_CONFLICT(HttpStatus.CONFLICT, "동시 입찰 충돌이 발생했습니다."),
     ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 상태입니다."),
+    AUCTION_CLOSED(HttpStatus.BAD_REQUEST, "이미 종료된 경매입니다."),
     DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "이미 존재하는 리소스입니다."),
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다."),
     AUCTION_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 경매를 찾을 수 없습니다."),
