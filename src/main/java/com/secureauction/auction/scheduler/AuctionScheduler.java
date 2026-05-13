@@ -58,7 +58,7 @@ public class AuctionScheduler {
                                 highestBid.getUser(),
                                 NotificationType.AUCTION_WON,
                                 String.format("[낙찰] '%s' 경매에 최종 낙찰되셨습니다!", auction.getTitle()),
-                                "/auctions/" + auction.getId()
+                                "/product/" + auction.getId()
                         );
                         log.info("Auction {} won by user {}.", auction.getId(), highestBid.getUser().getId());
                     },
@@ -71,7 +71,7 @@ public class AuctionScheduler {
                                 auction.getSeller(),
                                 NotificationType.AUCTION_ENDED, // 유찰 알림
                                 String.format("[유찰] '%s' 경매가 입찰자 없이 종료되었습니다.", auction.getTitle()),
-                                "/auctions/" + auction.getId()
+                                "/product/" + auction.getId()
                         );
                         log.info("Auction {} finished with no bids.", auction.getId());
                     }
@@ -97,7 +97,7 @@ public class AuctionScheduler {
                             user,
                             NotificationType.CLOSING_SOON,
                             String.format("[마감 임박] '%s' 경매 마감이 1시간 남았습니다!", auction.getTitle()),
-                            "/auctions/" + auction.getId()
+                            "/product/" + auction.getId()
                     ));
         }
     }
