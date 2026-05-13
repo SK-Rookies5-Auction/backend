@@ -64,6 +64,7 @@ public class AuctionDto {
         private Integer viewCount;
         private Integer likeCount;
         private Boolean isLiked;
+        private String mainPictureUrl;
         private Long sellerId;
         private String sellerNickname;
         private Long winnerId;
