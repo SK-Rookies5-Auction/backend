@@ -73,7 +73,7 @@ public class BidService {
                         previousBidder, // 수신자: 밀려난 1등
                         NotificationType.OUTBID, // 타입: 상위 입찰 발생
                         String.format("[%s] 상품에 더 높은 입찰가가 제시되었습니다.", auction.getTitle()),
-                        "/auctions/" + auctionId
+                        "/product/" + auctionId
                 );
             }
         }
