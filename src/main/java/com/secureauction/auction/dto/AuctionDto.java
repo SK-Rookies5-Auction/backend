@@ -115,6 +115,7 @@ public class AuctionDto {
         private Long auctionId;
         private String title;
         private Long currentPrice;
+        private Long myPrice;
         private String status;
         private Integer viewCount;
         private Integer likeCount;
