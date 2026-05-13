@@ -38,7 +38,6 @@ public class Comment {
     @JoinColumn(name = "parent_id")
     private Comment parent; // 부모 댓글 (질문)
 
-    @Builder.Default
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     private List<Comment> children = new ArrayList<>(); // 자식 댓글들 (답변)
 
