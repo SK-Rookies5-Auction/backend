@@ -50,7 +50,7 @@ public class NotificationController {
                 .build();
 
         Map<String, Object> result = new HashMap<>();
-        result.put("data", responses);
+        result.put("content", responses);
         result.put("pageInfo", pageInfo);
 
         return ApiResponse.success(result, "알림 목록을 성공적으로 조회했습니다.");

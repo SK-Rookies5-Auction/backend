@@ -83,8 +83,8 @@ public class UserController {
     // --- 페이지네이션 응답 공통 생성 로직 ---
     private ApiResponse<Object> createPaginatedResponse(Page<?> page, String message) {
         Map<String, Object> responseData = new HashMap<>();
-        responseData.put("data", page.getContent());
-        responseData.put("page_info", Map.of(
+        responseData.put("content", page.getContent());
+        responseData.put("pageInfo", Map.of(
                 "currentPage", page.getNumber(),
                 "pageSize", page.getSize(),
                 "totalPages", page.getTotalPages(),
