@@ -32,4 +32,17 @@ public class NotificationDto {
                     .build();
         }
     }
+
+    @Getter
+    @Builder
+    public static class PageInfo {
+        private int currentPage;
+        private int pageSize;
+        private int totalPages;
+        private long totalElements;
+        private boolean isFirst;
+        private boolean isLast;
+        private boolean hasNext;
+        private boolean hasPrevious;
+    }
 }

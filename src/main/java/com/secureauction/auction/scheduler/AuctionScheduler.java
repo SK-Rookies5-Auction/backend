@@ -52,14 +52,27 @@ public class AuctionScheduler {
                                 .status(PaymentStatus.PENDING)
                                 .build();
                         paymentRepository.save(payment);
-                        
-                        sendNotification(highestBid.getUser().getId(), auction.getId(),
-                                "경매 낙찰 알림", auction.getTitle() + " 경매에 낙찰되셨습니다.");
+
+                        // 낙찰 알림 전송 (AUCTION_WON 타입 사용)
+                        notificationService.createNotification(
+                                highestBid.getUser(),
+                                NotificationType.AUCTION_WON,
+                                String.format("[낙찰] '%s' 경매에 최종 낙찰되셨습니다!", auction.getTitle()),
+                                "/auctions/" + auction.getId()
+                        );
                         log.info("Auction {} won by user {}.", auction.getId(), highestBid.getUser().getId());
                     },
                     () -> {
                         // 유찰 처리
                         auction.updateStatus(AuctionStatus.FINISHED);
+
+                        // 판매자에게 유찰 알림
+                        notificationService.createNotification(
+                                auction.getSeller(),
+                                NotificationType.AUCTION_ENDED, // 유찰 알림
+                                String.format("[유찰] '%s' 경매가 입찰자 없이 종료되었습니다.", auction.getTitle()),
+                                "/auctions/" + auction.getId()
+                        );
                         log.info("Auction {} finished with no bids.", auction.getId());
                     }
                 );
@@ -89,17 +102,4 @@ public class AuctionScheduler {
         }
     }
 
-    private void sendNotification(Long userId, Long auctionId, String title, String message) {
-        // 1. ID로 유저 객체를 찾기
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
-        // 2. 알림 서비스 호출
-        notificationService.createNotification(
-                user,
-                NotificationType.WON,
-                String.format("[%s] %s", title, message), // 전달받은 제목과 메시지 활용
-                "/auctions" + auctionId
-        );
-    }
 }
