@@ -1,6 +1,7 @@
 package com.secureauction.auction.service;
 
 import com.secureauction.auction.domain.*;
+import com.secureauction.auction.dto.BidResponse;
 import com.secureauction.auction.exception.BusinessException;
 import com.secureauction.auction.exception.ErrorCode;
 import com.secureauction.auction.repository.AuctionRepository;
@@ -21,7 +22,7 @@ public class BidService {
     private final NotificationService notificationService;
 
     @Transactional
-    public Long placeBid(Long auctionId, User bidder, Long bidPrice) {
+    public BidResponse placeBid(Long auctionId, User bidder, Long bidPrice) {
         // 1. 경매 존재 여부 확인
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
@@ -71,6 +72,9 @@ public class BidService {
             }
         }
 
-        return bid.getId();
+        return BidResponse.builder()
+                .bidId(bid.getId())
+                .currentPrice(auction.getCurrentPrice())
+                .build();
     }
 }
