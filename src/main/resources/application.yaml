@@ -30,7 +30,7 @@ cloud:
   aws:
     s3:
       region: ${AWS_REGION:ap-northeast-2}
-      bucket: ${AWS_S3_BUCKET:}
+      bucket: ${S3_BUCKET_NAME:}
       access-key: ${AWS_ACCESS_KEY:}
       secret-key: ${AWS_SECRET_ACCESS_KEY:}
       base-directory: ${AWS_S3_BASE_DIRECTORY:auction-images}
