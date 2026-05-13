@@ -4,11 +4,10 @@ import com.secureauction.auction.domain.*;
 import com.secureauction.auction.dto.AuctionDto;
 import com.secureauction.auction.dto.AuctionStatsResponse;
 import com.secureauction.auction.global.security.CustomUserDetails;
-import com.secureauction.auction.repository.AuctionLikeRepository;
-import com.secureauction.auction.repository.AuctionRepository;
-import com.secureauction.auction.repository.PictureRepository;
+import com.secureauction.auction.repository.*;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +16,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuctionService {
@@ -33,6 +34,9 @@ public class AuctionService {
     private final PictureRepository pictureRepository;
     private final ImageService imageService;
     private final AuctionLikeRepository auctionLikeRepository;
+    private final BidRepository bidRepository;
+    private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService;
 
     /**
      * [등록] 경매 상품 등록
@@ -71,6 +75,140 @@ public class AuctionService {
         }
 
         return savedAuction.getId();
+    }
+
+    /**
+     * 상세 페이지: 특정 경매 상세 정보 조회
+     * '상태 지연' 방지를 위해 조회 시점에 마감 시간이 지났다면 즉시 종료 처리를 시도함 (Lazy Closure)
+     */
+    @Transactional
+    public AuctionDto.DetailResponse getAuctionDetail(Long id) {
+        Auction auction = auctionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 경매 물품을 찾을 수 없습니다. ID: " + id));
+
+        // 마감 시간이 지났는데 아직 LIVE 상태라면 즉시 종료 처리 시도
+        if (auction.getStatus() == AuctionStatus.LIVE && auction.getEndTime().isBefore(LocalDateTime.now())) {
+            try {
+                // 개별 트랜잭션으로 종료 처리 (다른 조회에 영향을 주지 않도록 함)
+                closeAuctionIfExpired(auction.getId());
+                // 변경된 상태(FINISHED, winner 등)를 반영하기 위해 재조회
+                auction = auctionRepository.findById(id).orElse(auction);
+            } catch (Exception e) {
+                log.error("Failed to perform lazy closure for auction {}: {}", id, e.getMessage());
+            }
+        }
+
+        // 조회수 증가
+        auction.increaseViewCount();
+
+        // 현재 로그인한 사용자의 좋아요 여부 확인
+        boolean isLiked = false;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
+            User currentUser = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+            isLiked = auctionLikeRepository.findByUserAndAuction(currentUser, auction).isPresent();
+        }
+
+        List<AuctionDto.PictureInfo> pictureInfos = auction.getPictures().stream()
+                .map(p -> AuctionDto.PictureInfo.builder()
+                        .url(imageService.createPresignedUrl(p.getImageKey()))
+                        .imageKey(p.getImageKey())
+                        .isMain(p.getIsMain())
+                        .sortOrder(p.getSortOrder())
+                        .build())
+                .collect(Collectors.toList());
+
+        String mainUrl = pictureInfos.stream()
+                .filter(AuctionDto.PictureInfo::getIsMain)
+                .map(AuctionDto.PictureInfo::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        // 입찰 기록
+        List<AuctionDto.BidInfo> biddingHistory = auction.getBids().stream()
+                .map(bid -> AuctionDto.BidInfo.builder()
+                        .bidderNickname(bid.getUser().getNickname()) // 입찰자 닉네임
+                        .price(bid.getPrice())                      // 입찰 금액
+                        .bidTime(bid.getUpdatedAt())                // 입찰 시간
+                        .build())
+                .sorted((b1, b2) -> b2.getBidTime().compareTo(b1.getBidTime()))
+                .collect(Collectors.toList());
+
+        return AuctionDto.DetailResponse.builder()
+                .id(auction.getId())
+                .title(auction.getTitle())
+                .description(auction.getDescription())
+                .currentPrice(auction.getCurrentPrice())
+                .startPrice(auction.getStartPrice())
+                .status(auction.getStatus().name())
+                .category(auction.getCategory().name())
+                .startTime(auction.getStartTime())
+                .endTime(auction.getEndTime())
+                .viewCount(auction.getViewCount())
+                .likeCount(auction.getLikeCount())
+                .isLiked(isLiked)
+                .mainPictureUrl(mainUrl)
+                .sellerNickname(auction.getSeller().getNickname())
+                .sellerId(auction.getSeller().getId())
+                .winnerId(auction.getWinner() != null ? auction.getWinner().getId() : null)
+                .winnerNickname(auction.getWinner() != null ? auction.getWinner().getNickname() : null)
+                .pictures(pictureInfos)
+                .biddingHistory(biddingHistory)
+                .build();
+    }
+
+    /**
+     * 특정 경매의 종료 처리를 수행함.
+     * Propagation.REQUIRES_NEW를 사용하여 독립적인 트랜잭션에서 실행됨.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void closeAuctionIfExpired(Long auctionId) {
+        Auction auction = auctionRepository.findById(auctionId).orElse(null);
+        if (auction == null || auction.getStatus() != AuctionStatus.LIVE || auction.getEndTime().isAfter(LocalDateTime.now())) {
+            return;
+        }
+
+        log.info("Closing auction {}. Processing closure...", auctionId);
+
+        // 최고 입찰자 찾기
+        bidRepository.findFirstByAuctionOrderByPriceDesc(auction)
+            .ifPresentOrElse(
+                highestBid -> {
+                    // 낙찰자 확정
+                    auction.finish(highestBid.getUser());
+                    
+                    // 결제 정보 생성 (PENDING 상태)
+                    Payment payment = Payment.builder()
+                            .user(highestBid.getUser())
+                            .auction(auction)
+                            .finalPrice(highestBid.getPrice())
+                            .status(PaymentStatus.PENDING)
+                            .build();
+                    paymentRepository.save(payment);
+
+                    // 낙찰 알림 전송
+                    notificationService.createNotification(
+                            highestBid.getUser(),
+                            NotificationType.AUCTION_WON,
+                            String.format("[낙찰] '%s' 경매에 최종 낙찰되셨습니다!", auction.getTitle()),
+                            "/product/" + auction.getId()
+                    );
+                    log.info("Auction {} won by user {}.", auctionId, highestBid.getUser().getId());
+                },
+                () -> {
+                    // 유찰 처리
+                    auction.updateStatus(AuctionStatus.FINISHED);
+
+                    // 판매자에게 유찰 알림
+                    notificationService.createNotification(
+                            auction.getSeller(),
+                            NotificationType.AUCTION_ENDED,
+                            String.format("[유찰] '%s' 경매가 입찰자 없이 종료되었습니다.", auction.getTitle()),
+                            "/product/" + auction.getId()
+                    );
+                    log.info("Auction {} finished with no bids.", auctionId);
+                }
+            );
     }
 
     /**
@@ -150,73 +288,6 @@ public class AuctionService {
                     .sellerId(auction.getSeller().getId())
                     .build();
         });
-    }
-
-    /**
-     * 상세 페이지: 특정 경매 상세 정보 조회
-     */
-    @Transactional
-    public AuctionDto.DetailResponse getAuctionDetail(Long id) {
-        Auction auction = auctionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("해당 경매 물품을 찾을 수 없습니다. ID: " + id));
-
-        // 조회수 증가
-        auction.increaseViewCount();
-
-        // 현재 로그인한 사용자의 좋아요 여부 확인
-        boolean isLiked = false;
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
-            User currentUser = ((CustomUserDetails) authentication.getPrincipal()).getUser();
-            isLiked = auctionLikeRepository.findByUserAndAuction(currentUser, auction).isPresent();
-        }
-
-        List<AuctionDto.PictureInfo> pictureInfos = auction.getPictures().stream()
-                .map(p -> AuctionDto.PictureInfo.builder()
-                        .url(imageService.createPresignedUrl(p.getImageKey()))
-                        .imageKey(p.getImageKey())
-                        .isMain(p.getIsMain())
-                        .sortOrder(p.getSortOrder())
-                        .build())
-                .collect(Collectors.toList());
-
-        String mainUrl = pictureInfos.stream()
-                .filter(AuctionDto.PictureInfo::getIsMain)
-                .map(AuctionDto.PictureInfo::getUrl)
-                .findFirst()
-                .orElse(null);
-
-        // 입찰 기록 (나중에 추가 구현 가능)
-        List<AuctionDto.BidInfo> biddingHistory = auction.getBids().stream()
-                .map(bid -> AuctionDto.BidInfo.builder()
-                        .bidderNickname(bid.getUser().getNickname()) // 입찰자 닉네임
-                        .price(bid.getPrice())                      // 입찰 금액
-                        .bidTime(bid.getUpdatedAt())                // 입찰 시간
-                        .build())
-                .sorted((b1, b2) -> b2.getBidTime().compareTo(b1.getBidTime()))
-                .collect(Collectors.toList());
-
-        return AuctionDto.DetailResponse.builder()
-                .id(auction.getId())
-                .title(auction.getTitle())
-                .description(auction.getDescription())
-                .currentPrice(auction.getCurrentPrice())
-                .startPrice(auction.getStartPrice())
-                .status(auction.getStatus().name())
-                .category(auction.getCategory().name())
-                .startTime(auction.getStartTime())
-                .endTime(auction.getEndTime())
-                .viewCount(auction.getViewCount())
-                .likeCount(auction.getLikeCount())
-                .isLiked(isLiked)
-                .mainPictureUrl(mainUrl)
-                .sellerNickname(auction.getSeller().getNickname())
-                .sellerId(auction.getSeller().getId())
-                .winnerId(auction.getWinner() != null ? auction.getWinner().getId() : null)
-                .winnerNickname(auction.getWinner() != null ? auction.getWinner().getNickname() : null)
-                .pictures(pictureInfos)
-                .biddingHistory(biddingHistory)
-                .build();
     }
 
     @Transactional
