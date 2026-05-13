@@ -8,6 +8,8 @@ import com.secureauction.auction.exception.BusinessException;
 import com.secureauction.auction.exception.ErrorCode;
 import com.secureauction.auction.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +23,12 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
 
-    // 알림 목록 조회
-    public List<NotificationDto.Response> getNotifications(User user) {
-        return notificationRepository.findAllByUserOrderByCreatedAtDesc(user)
-                .stream()
-                .map(NotificationDto.Response::of)
-                .collect(Collectors.toList());
+    // 알림 목록 조회 (페이지네이션)
+    public Page<Notification> getNotifications(User user, Pageable pageable) {
+        return notificationRepository.findAllByUserOrderByCreatedAtDesc(user, pageable);
     }
 
-    // 알림 읽음 처리
+    // 알림 읽음 처리(단건)
     @Transactional
     public void readNotification(Long id, User user) {
         Notification notification = notificationRepository.findById(id)
@@ -41,6 +40,19 @@ public class NotificationService {
         }
 
         notification.markAsRead();
+    }
+
+    // 모든 알림 읽음 처리 (일괄)
+    @Transactional
+    public void readAllNotifications(User user) {
+        List<Notification> unreadNotifications = notificationRepository.findAllByUserAndIsReadFalse(user);
+        unreadNotifications.forEach(Notification::markAsRead);
+    }
+
+    // 읽은 알림 모두 삭제 (일괄)
+    @Transactional
+    public void deleteAllReadNotifications(User user) {
+        notificationRepository.deleteAllByUserAndIsReadTrue(user);
     }
 
     @Transactional

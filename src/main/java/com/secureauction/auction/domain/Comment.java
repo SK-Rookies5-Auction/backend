@@ -7,6 +7,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "comments")
@@ -31,6 +33,21 @@ public class Comment {
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Comment parent; // 부모 댓글 (질문)
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    private List<Comment> children = new ArrayList<>(); // 자식 댓글들 (답변)
+
+    @Builder
+    public Comment(Auction auction, User user, String content, Comment parent) {
+        this.auction = auction;
+        this.user = user;
+        this.content = content;
+        this.parent = parent;
+    }
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

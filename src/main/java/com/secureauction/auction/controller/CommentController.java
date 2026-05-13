@@ -30,6 +30,20 @@ public class CommentController {
     }
 
     /**
+     * 문의 답변 등록 (추가된 부분)
+     */
+    @PostMapping("/{commentId}/answers")
+    public ApiResponse<Long> createAnswer(
+            @PathVariable Long auctionId,
+            @PathVariable Long commentId,
+            @RequestBody CommentDto.CreateRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long answerId = commentService.createAnswer(auctionId, commentId, request, userDetails.getUser());
+        return ApiResponse.success(answerId, "답변이 성공적으로 등록되었습니다.");
+    }
+
+    /**
      * 특정 경매의 댓글 목록 조회
      */
     @GetMapping
