@@ -1,6 +1,7 @@
 package com.secureauction.auction.service;
 
 import com.secureauction.auction.domain.Auction;
+import com.secureauction.auction.domain.AuctionStatus;
 import com.secureauction.auction.domain.User;
 import com.secureauction.auction.dto.*;
 import com.secureauction.auction.exception.BusinessException;
@@ -49,11 +50,14 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserSummaryResponse getUserSummary(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
         return UserSummaryResponse.builder()
-                .biddingCount(0)
-                .wonCount(0)
-                .hostedCount(0)
-                .watchlistCount(0)
+                .biddingCount(Math.toIntExact(bidRepository.countDistinctAuctionsByUser(user)))
+                .wonCount(Math.toIntExact(auctionRepository.countByWinner(user)))
+                .hostedCount(Math.toIntExact(auctionRepository.countBySeller(user)))
+                .watchlistCount(Math.toIntExact(auctionLikeRepository.countByUser(user)))
                 .build();
     }
 
@@ -95,13 +99,25 @@ public class UserService {
     // 5. 내가 등록한 경매 목록
     @Transactional(readOnly = true)
     public Page<AuctionDto.MyPageListResponse> getMyAuctions(User user, String status, Pageable pageable) {
-        return auctionRepository.findBySeller(user, pageable)
+        if (status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)) {
+            return auctionRepository.findBySeller(user, pageable)
+                    .map(this::convertToMyPageListResponse);
+        }
+
+        AuctionStatus auctionStatus;
+        try {
+            auctionStatus = AuctionStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        return auctionRepository.findBySellerAndStatus(user, auctionStatus, pageable)
                 .map(this::convertToMyPageListResponse);
     }
 
     // 6. 내가 입찰한 경매 목록
     @Transactional(readOnly = true)
-    public Page<AuctionDto.MyPageListResponse> getMyBids(User user, String status, Pageable pageable) {
+    public Page<AuctionDto.MyPageListResponse> getMyBids(User user, Pageable pageable) {
         return bidRepository.findBidAuctionsByUser(user, pageable)
                 .map(this::convertToMyPageListResponse);
     }
