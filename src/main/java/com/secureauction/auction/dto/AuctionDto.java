@@ -102,4 +102,19 @@ public class AuctionDto {
         private Integer likeCount;
         private Boolean isLiked;
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MyPageListResponse {
+        private Long auctionId;
+        private String title;
+        private Long currentPrice;
+        private String status;
+        private Integer viewCount;
+        private Integer likeCount;
+        private LocalDateTime createdAt;
+        private String mainPictureUrl;
+    }
 }

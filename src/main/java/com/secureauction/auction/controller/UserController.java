@@ -49,26 +49,52 @@ public class UserController {
         return ApiResponse.success(null, "회원 정보가 수정되었습니다.");
     }
 
+    // 5. 마이페이지 등록 경매 목록 조회
+    @GetMapping("/me/auctions")
+    public ApiResponse<Object> getMyAuctions(
+            @RequestParam(defaultValue = "ALL") String status,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Page<AuctionDto.MyPageListResponse> resultPage = userService.getMyAuctions(userDetails.getUser(), status, pageable);
+        return createPaginatedResponse(resultPage, "마이페이지 등록 경매 내역을 성공적으로 조회했습니다.");
+    }
+
+    // 6. 마이페이지 입찰 내역 목록 조회
+    @GetMapping("/me/bids")
+    public ApiResponse<Object> getMyBids(
+            @RequestParam(defaultValue = "ALL") String status,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Page<AuctionDto.MyPageListResponse> resultPage = userService.getMyBids(userDetails.getUser(), status, pageable);
+        return createPaginatedResponse(resultPage, "마이페이지 입찰 내역을 성공적으로 조회했습니다.");
+    }
+
+    // 7. 마이페이지 관심 상품 목록 조회
     @GetMapping("/me/likes")
     public ApiResponse<Object> getMyLikes(
             @PageableDefault(size = 10) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Page<AuctionDto.LikeListResponse> resultPage = userService.getMyWishlist(userDetails.getUser(), pageable);
+        Page<AuctionDto.MyPageListResponse> resultPage = userService.getMyWishlist(userDetails.getUser(), pageable);
+        return createPaginatedResponse(resultPage, "마이페이지 관심 내역을 성공적으로 조회했습니다.");
+    }
 
+    // --- 페이지네이션 응답 공통 생성 로직 ---
+    private ApiResponse<Object> createPaginatedResponse(Page<?> page, String message) {
         Map<String, Object> responseData = new HashMap<>();
-        responseData.put("data", resultPage.getContent());
+        responseData.put("data", page.getContent());
         responseData.put("page_info", Map.of(
-                "current_page", resultPage.getNumber(),
-                "page_size", resultPage.getSize(),
-                "total_pages", resultPage.getTotalPages(),
-                "total_elements", resultPage.getTotalElements(),
-                "is_first", resultPage.isFirst(),
-                "is_last", resultPage.isLast(),
-                "has_next", resultPage.hasNext(),
-                "has_previous", resultPage.hasPrevious()
+                "currentPage", page.getNumber(),
+                "pageSize", page.getSize(),
+                "totalPages", page.getTotalPages(),
+                "totalElements", page.getTotalElements(),
+                "isFirst", page.isFirst(),
+                "isLast", page.isLast(),
+                "hasNext", page.hasNext(),
+                "hasPrevious", page.hasPrevious()
         ));
-
-        return ApiResponse.success(responseData, "마이페이지 관심 내역을 성공적으로 조회했습니다.");
+        return ApiResponse.success(responseData, message);
     }
 }
