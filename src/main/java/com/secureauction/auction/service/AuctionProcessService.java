@@ -61,7 +61,7 @@ public class AuctionProcessService {
                             auction.getSeller(),
                             NotificationType.AUCTION_ENDED, // 유찰 알림
                             String.format("[유찰] '%s' 경매가 입찰자 없이 종료되었습니다.", auction.getTitle()),
-                            "/auctions/" + auction.getId()
+                            "/product/" + auction.getId()
                     );
                     log.info("Auction {} finished with no bids.", auction.getId());
                 }

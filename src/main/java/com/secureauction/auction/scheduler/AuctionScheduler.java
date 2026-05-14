@@ -39,17 +39,15 @@ public class AuctionScheduler {
         }
     }
 
-    @Scheduled(cron = "0 0 * * * *") // 매 시간 정각에 실행 (예: 12시, 1시...)
+    @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void notifyClosingSoon() {
-        LocalDateTime targetTime = LocalDateTime.now().plusHours(1); // 지금부터 딱 1시간 뒤
-        // 마감 1시간 전인 경매들 조회
+        LocalDateTime targetTime = LocalDateTime.now().plusHours(1);
         List<Auction> closingAuctions = auctionRepository.findAllByStatusAndEndTimeBetween(
                 AuctionStatus.LIVE, LocalDateTime.now(), targetTime
         );
 
         for (Auction auction : closingAuctions) {
-            // 입찰자들에게 알림 전송
             auction.getBids().stream()
                     .map(Bid::getUser)
                     .distinct()
@@ -57,7 +55,7 @@ public class AuctionScheduler {
                             user,
                             NotificationType.CLOSING_SOON,
                             String.format("[마감 임박] '%s' 경매 마감이 1시간 남았습니다!", auction.getTitle()),
-                            "/auctions/" + auction.getId()
+                            "/product/" + auction.getId() // 👈 /auctions/에서 /product/로 수정
                     ));
         }
     }
