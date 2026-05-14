@@ -37,6 +37,7 @@ public class AuctionDto {
         private String mainPictureUrl;
         private LocalDateTime startTime;
         private LocalDateTime endTime;
+        private Integer bidCount;
         private Boolean isLiked;
         private Long sellerId;
     }
