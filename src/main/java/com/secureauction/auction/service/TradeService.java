@@ -17,6 +17,7 @@ public class TradeService {
 
     private final AuctionRepository auctionRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService;
 
     /**
      * 낙찰자 결제 (PENDING -> PAID)
@@ -55,6 +56,13 @@ public class TradeService {
         payment.complete();
         auction.updateStatus(AuctionStatus.PAID);
 
+        // [알림 추가] 판매자에게 결제 완료 사실을 알림
+        notificationService.createNotification(
+                auction.getSeller(),
+                NotificationType.AUCTION_WON, // 혹은 별도 PAYMENT_COMPLETED 타입
+                String.format("[결제] '%s' 상품의 결제가 완료되었습니다. 배송을 시작해 주세요!", auction.getTitle()),
+                "/product/" + auction.getId()
+        );
     }
 
     /**
@@ -77,6 +85,14 @@ public class TradeService {
 
         // 3. 배송 상태로 변경
         auction.updateStatus(AuctionStatus.SHIPPING);
+
+        // [알림 추가] 낙찰자(구매자)에게 배송 시작을 알림
+        notificationService.createNotification(
+                auction.getWinner(),
+                NotificationType.AUCTION_WON, // 혹은 별도 SHIPPING_STARTED 타입
+                String.format("[배송] 주문하신 '%s' 상품의 배송이 시작되었습니다!", auction.getTitle()),
+                "/product/" + auction.getId()
+        );
     }
 
     /**
@@ -99,5 +115,13 @@ public class TradeService {
 
         // 3. 최종 완료 상태로 변경
         auction.updateStatus(AuctionStatus.COMPLETED);
+
+        // [알림 추가] 판매자에게 최종 수령 완료 알림
+        notificationService.createNotification(
+                auction.getSeller(),
+                NotificationType.AUCTION_WON,
+                String.format("[완료] '%s' 상품의 구매자가 수령을 확인했습니다. 거래가 종료되었습니다.", auction.getTitle()),
+                "/product/" + auction.getId()
+        );
     }
 }
