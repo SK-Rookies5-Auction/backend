@@ -5,8 +5,10 @@ import com.secureauction.auction.event.AuctionWonEvent;
 import com.secureauction.auction.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Component
@@ -15,9 +17,10 @@ public class AuctionEventListener {
 
     private final NotificationService notificationService;
 
-    @EventListener
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleAuctionWon(AuctionWonEvent event) {
-        log.info("Handling AuctionWonEvent for auction {}", event.getAuction().getId());
+        log.info("Handling AuctionWonEvent for auction {} asynchronously after commit", event.getAuction().getId());
         notificationService.createNotification(
                 event.getWinner(),
                 NotificationType.AUCTION_WON,
