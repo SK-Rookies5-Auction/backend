@@ -31,6 +31,7 @@ public class AuctionScheduler {
         
         for (Auction auction : expiredAuctions) {
             try {
+                // 비즈니스 로직은 서비스로 위임하고, 개별 경매의 실패가 전체 루프에 영향을 주지 않도록 예외 처리
                 auctionProcessService.processClosure(auction.getId());
             } catch (Exception e) {
                 log.error("Failed to process closure for auction {}: {}", auction.getId(), e.getMessage());

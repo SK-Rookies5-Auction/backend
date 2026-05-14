@@ -38,10 +38,9 @@ public class AuctionProcessService {
         bidRepository.findFirstByAuctionOrderByPriceDesc(auction)
             .ifPresentOrElse(
                 highestBid -> {
-                    // 낙찰자 확정
+                    // [낙찰 시]: 낙찰자 확정 및 결제 정보 생성
                     auction.finish(highestBid.getUser());
                     
-                    // 결제 정보 생성 (PENDING 상태)
                     Payment payment = Payment.builder()
                             .user(highestBid.getUser())
                             .auction(auction)
@@ -55,10 +54,9 @@ public class AuctionProcessService {
                     log.info("Auction {} won by user {}.", auction.getId(), highestBid.getUser().getId());
                 },
                 () -> {
-                    // 유찰 처리
+                    // [유찰 시]: 프론트 팀원 의도대로 상태 변경 및 판매자 알림 전송
                     auction.updateStatus(AuctionStatus.FINISHED);
 
-                    // 판매자에게 유찰 알림 (기존 로직 보존)
                     notificationService.createNotification(
                             auction.getSeller(),
                             NotificationType.AUCTION_ENDED, // 유찰 알림
