@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -24,11 +25,16 @@ public class AuctionScheduler {
 
     @Scheduled(cron = "0 * * * * *") // 매 분 0초 실행
     public void closeExpiredAuctions() {
-        log.info("Closing expired auctions...");
-        LocalDateTime now = LocalDateTime.now();
+        // DB 데이터가 KST(Asia/Seoul) 기준이므로, 서버 시간대와 상관없이 KST 기준으로 현재 시간을 가져옴
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        log.info("Closing expired auctions... (Standard KST: {})", now);
 
         // 엔티티 전체 대신 ID 목록만 조회하여 메모리 부하 감소 및 targetIds 변수명 일치
         List<Long> targetIds = auctionRepository.findIdsByStatusAndEndTimeBefore(AuctionStatus.LIVE, now);
+        
+        if (!targetIds.isEmpty()) {
+            log.info("Found {} auctions to close.", targetIds.size());
+        }
 
         for (Long auctionId : targetIds) {
             try {
@@ -44,9 +50,12 @@ public class AuctionScheduler {
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void notifyClosingSoon() {
-        LocalDateTime targetTime = LocalDateTime.now().plusHours(1);
+        // 마찬가지로 KST 기준으로 계산
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        LocalDateTime targetTime = now.plusHours(1);
+        
         List<Auction> closingAuctions = auctionRepository.findAllByStatusAndEndTimeBetween(
-                AuctionStatus.LIVE, LocalDateTime.now(), targetTime
+                AuctionStatus.LIVE, now, targetTime
         );
 
         for (Auction auction : closingAuctions) {
