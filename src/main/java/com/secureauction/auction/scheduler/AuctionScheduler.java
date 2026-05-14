@@ -1,6 +1,7 @@
 package com.secureauction.auction.scheduler;
 
 import com.secureauction.auction.domain.*;
+import com.secureauction.auction.event.AuctionWonEvent;
 import com.secureauction.auction.repository.AuctionRepository;
 import com.secureauction.auction.repository.BidRepository;
 import com.secureauction.auction.repository.PaymentRepository;
@@ -8,6 +9,7 @@ import com.secureauction.auction.repository.UserRepository;
 import com.secureauction.auction.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,7 @@ public class AuctionScheduler {
     private final PaymentRepository paymentRepository;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Scheduled(cron = "0 * * * * *") // 매 분 0초 실행
     @Transactional
@@ -54,12 +57,8 @@ public class AuctionScheduler {
                         paymentRepository.save(payment);
 
                         // 낙찰 알림 전송 (AUCTION_WON 타입 사용)
-                        notificationService.createNotification(
-                                highestBid.getUser(),
-                                NotificationType.AUCTION_WON,
-                                String.format("[낙찰] '%s' 경매에 최종 낙찰되셨습니다!", auction.getTitle()),
-                                "/product/" + auction.getId()
-                        );
+                        eventPublisher.publishEvent(new AuctionWonEvent(auction));
+
                         log.info("Auction {} won by user {}.", auction.getId(), highestBid.getUser().getId());
                     },
                     () -> {
