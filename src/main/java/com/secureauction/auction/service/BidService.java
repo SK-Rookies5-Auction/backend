@@ -63,7 +63,16 @@ public class BidService {
         
         bidRepository.save(bid);
 
-        // 7. [알림 로직 추가] 밀려난 사람에게 알림 쏘기
+        // 7. [알림 로직 추가]
+        // 7-1. 판매자에게 알림 전송
+        notificationService.createNotification(
+                auction.getSeller(), // 수신자: 판매자
+                NotificationType.OUTBID,
+                String.format("[%s] 상품에 새로운 입찰이 등록되었습니다.", auction.getTitle()),
+                "/product/" + auctionId
+        );
+
+        // 7-2. 밀려난 사람에게 알림 쏘기
         if (lastHighBid.isPresent()) {
             User previousBidder = lastHighBid.get().getUser();
 
