@@ -26,15 +26,17 @@ public class AuctionScheduler {
     public void closeExpiredAuctions() {
         log.info("Closing expired auctions...");
         LocalDateTime now = LocalDateTime.now();
-        
-        List<Auction> expiredAuctions = auctionRepository.findAllByStatusAndEndTimeBefore(AuctionStatus.LIVE, now);
-        
-        for (Auction auction : expiredAuctions) {
+
+        // 엔티티 전체 대신 ID 목록만 조회하여 메모리 부하 감소 및 targetIds 변수명 일치
+        List<Long> targetIds = auctionRepository.findIdsByStatusAndEndTimeBefore(AuctionStatus.LIVE, now);
+
+        for (Long auctionId : targetIds) {
             try {
-                // 비즈니스 로직은 서비스로 위임하고, 개별 경매의 실패가 전체 루프에 영향을 주지 않도록 예외 처리
-                auctionProcessService.processClosure(auction.getId());
+                // 개별 경매 처리를 독립 트랜잭션으로 위임
+                auctionProcessService.processClosure(auctionId);
             } catch (Exception e) {
-                log.error("Failed to process closure for auction {}: {}", auction.getId(), e.getMessage());
+                // 특정 경매 처리 중 에러(DB 락, 네트워크 오류 등)가 나도 전체 스케줄러가 죽지 않고 넘어감
+                log.error("[Critical] 경매 마감 처리 실패 - ID: {}, 사유: {}", auctionId, e.getMessage());
             }
         }
     }
@@ -55,9 +57,8 @@ public class AuctionScheduler {
                             user,
                             NotificationType.CLOSING_SOON,
                             String.format("[마감 임박] '%s' 경매 마감이 1시간 남았습니다!", auction.getTitle()),
-                            "/product/" + auction.getId() // 👈 /auctions/에서 /product/로 수정
+                            "/product/" + auction.getId()
                     ));
         }
     }
-
 }
