@@ -12,13 +12,13 @@ import java.util.TimeZone;
 @Configuration
 public class JacksonConfig {
 
-    private static final String DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
+    private static final String DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
 
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jackson2ObjectMapperBuilderCustomizer() {
         return builder -> {
-            // 시간대 설정 (Asia/Seoul)
-            builder.timeZone(TimeZone.getTimeZone("Asia/Seoul"));
+            // 시간대 설정 (UTC) - 클라이언트와의 표준화를 위해 UTC 사용
+            builder.timeZone(TimeZone.getTimeZone("UTC"));
             
             // LocalDateTime 직렬화/역직렬화 포맷 설정
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATETIME_FORMAT);
