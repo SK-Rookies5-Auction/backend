@@ -9,6 +9,7 @@ import com.secureauction.auction.exception.ErrorCode;
 import com.secureauction.auction.repository.AuctionLikeRepository;
 import com.secureauction.auction.repository.AuctionRepository;
 import com.secureauction.auction.repository.BidRepository;
+import com.secureauction.auction.repository.PaymentRepository;
 import com.secureauction.auction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ public class UserService {
     private final AuctionLikeRepository auctionLikeRepository;
     private final AuctionRepository auctionRepository; // 추가됨
     private final BidRepository bidRepository; // 추가됨
+    private final PaymentRepository paymentRepository;
     private final ImageService imageService;
 
     // --- 공통 DTO 변환 메서드 ---
@@ -46,11 +48,19 @@ public class UserService {
                 .map(p -> imageService.createPresignedUrl(p.getImageKey()))
                 .orElse(null);
 
+        Long finalPrice = null;
+        if (auction.getStatus() != AuctionStatus.LIVE && auction.getStatus() != AuctionStatus.READY) {
+            finalPrice = paymentRepository.findByAuction(auction)
+                    .map(com.secureauction.auction.domain.Payment::getFinalPrice)
+                    .orElse(null);
+        }
+
         return AuctionDto.MyPageListResponse.builder()
                 .auctionId(auction.getId())
                 .title(auction.getTitle())
                 .currentPrice(currentPrice)
                 .myPrice(myPrice)
+                .finalPrice(finalPrice)
                 .status(auction.getStatus().name())
                 .viewCount(auction.getViewCount())
                 .likeCount(auction.getLikeCount())

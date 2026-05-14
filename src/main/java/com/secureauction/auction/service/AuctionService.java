@@ -180,6 +180,12 @@ public class AuctionService {
                         .build())
                 .collect(Collectors.toList());
 
+        String mainUrl = pictureInfos.stream()
+                .filter(AuctionDto.PictureInfo::getIsMain)
+                .map(AuctionDto.PictureInfo::getUrl)
+                .findFirst()
+                .orElse(null);
+
         // 입찰 기록 (나중에 추가 구현 가능)
         List<AuctionDto.BidInfo> biddingHistory = auction.getBids().stream()
                 .map(bid -> AuctionDto.BidInfo.builder()
@@ -198,6 +204,7 @@ public class AuctionService {
                 .startPrice(auction.getStartPrice())
                 .status(auction.getStatus().name())
                 .category(auction.getCategory().name())
+                .mainPictureUrl(mainUrl)
                 .startTime(auction.getStartTime())
                 .endTime(auction.getEndTime())
                 .viewCount(auction.getViewCount())
