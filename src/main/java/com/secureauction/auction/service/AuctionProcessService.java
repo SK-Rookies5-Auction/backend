@@ -54,6 +54,15 @@ public class AuctionProcessService {
 
                     // 이벤트 발행 방식 적용 (유지보수성 향상)
                     eventPublisher.publishEvent(new AuctionWonEvent(auction, highestBid.getUser()));
+
+                    // [추가] 판매자에게 낙찰 결과 알림 전송
+                    notificationService.createNotification(
+                            auction.getSeller(),
+                            NotificationType.AUCTION_WON,
+                            String.format("[판매] '%s' 상품이 최종가 ₩%,d에 낙찰되었습니다!", auction.getTitle(), highestBid.getPrice()),
+                            "/product/" + auction.getId()
+                    );
+
                     log.info("Auction {} won by user {}.", auction.getId(), highestBid.getUser().getId());
                 },
                 () -> {
