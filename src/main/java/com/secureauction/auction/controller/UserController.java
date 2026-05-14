@@ -63,10 +63,11 @@ public class UserController {
     // 6. 마이페이지 입찰 내역 목록 조회
     @GetMapping("/me/bids")
     public ApiResponse<Object> getMyBids(
+            @RequestParam(defaultValue = "ALL") String status,
             @PageableDefault(size = 10) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Page<AuctionDto.MyPageListResponse> resultPage = userService.getMyBids(userDetails.getUser(), pageable);
+        Page<AuctionDto.MyPageListResponse> resultPage = userService.getMyBids(userDetails.getUser(), status, pageable);
         return createPaginatedResponse(resultPage, "마이페이지 입찰 내역을 성공적으로 조회했습니다.");
     }
 
