@@ -31,4 +31,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
 
     @Query("SELECT DISTINCT b.auction FROM Bid b WHERE b.user = :user AND b.auction.status = 'LIVE' AND b.auction.currentPrice > (SELECT MAX(b2.price) FROM Bid b2 WHERE b2.auction = b.auction AND b2.user = :user)")
     Page<Auction> findOutbidAuctionsByUser(@Param("user") User user, Pageable pageable);
+
+    @Query("SELECT DISTINCT b.auction FROM Bid b WHERE b.user = :user AND b.auction.status = 'FINISHED' AND (b.auction.winner IS NULL OR b.auction.winner != :user)")
+    Page<Auction> findLostAuctionsByUser(@Param("user") User user, Pageable pageable);
 }
