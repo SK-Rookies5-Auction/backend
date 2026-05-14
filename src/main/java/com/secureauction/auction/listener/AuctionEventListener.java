@@ -22,7 +22,7 @@ public class AuctionEventListener {
                 event.getWinner(),
                 NotificationType.AUCTION_WON,
                 String.format("[낙찰] '%s' 경매에 최종 낙찰되셨습니다!", event.getAuction().getTitle()),
-                "/auctions/" + event.getAuction().getId()
+                "/product/" + event.getAuction().getId()
         );
     }
 }
