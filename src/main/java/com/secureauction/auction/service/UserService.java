@@ -31,17 +31,17 @@ public class UserService {
     private final ImageService imageService;
 
     // --- 공통 DTO 변환 메서드 ---
-    private AuctionDto.MyPageListResponse convertToMyPageListResponse(Auction auction) {
-        return convertToMyPageListResponse(auction, auction.getCurrentPrice(), null);
-    }
-
     private AuctionDto.MyPageListResponse convertToMyBidListResponse(Auction auction, User user) {
         Long highestBidPrice = bidRepository.findHighestPriceByAuction(auction);
         Long myHighestBidPrice = bidRepository.findHighestPriceByAuctionAndUser(auction, user);
-        return convertToMyPageListResponse(auction, highestBidPrice, myHighestBidPrice);
+        
+        // Null safety for primitive Long unboxing if needed, though DTO usually accepts Long
+        long current = highestBidPrice != null ? highestBidPrice : auction.getCurrentPrice();
+        
+        return convertToMyPageListResponse(auction, current, myHighestBidPrice, user);
     }
 
-    private AuctionDto.MyPageListResponse convertToMyPageListResponse(Auction auction, Long currentPrice, Long myPrice) {
+    private AuctionDto.MyPageListResponse convertToMyPageListResponse(Auction auction, Long currentPrice, Long myPrice, User currentUser) {
         String mainUrl = auction.getPictures().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsMain()))
                 .findFirst()
@@ -55,13 +55,32 @@ public class UserService {
                     .orElse(null);
         }
 
+        // 상태 계산 로직 (WON, OUTBID, SOLD 등)
+        String statusStr = auction.getStatus().name();
+        if (currentUser != null) {
+            // 내가 입찰자 혹은 위너인 경우
+            if (auction.getStatus() == AuctionStatus.FINISHED) {
+                if (currentUser.equals(auction.getWinner())) {
+                    statusStr = "WON";
+                }
+            } else if (auction.getStatus() == AuctionStatus.LIVE && myPrice != null) {
+                if (myPrice < currentPrice) {
+                    statusStr = "OUTBID";
+                }
+            }
+            // 내가 판매자인 경우
+            if (currentUser.equals(auction.getSeller()) && auction.getStatus() == AuctionStatus.FINISHED) {
+                statusStr = "SOLD";
+            }
+        }
+
         return AuctionDto.MyPageListResponse.builder()
                 .auctionId(auction.getId())
                 .title(auction.getTitle())
                 .currentPrice(currentPrice)
                 .myPrice(myPrice)
                 .finalPrice(finalPrice)
-                .status(auction.getStatus().name())
+                .status(statusStr)
                 .viewCount(auction.getViewCount())
                 .likeCount(auction.getLikeCount())
                 .createdAt(auction.getCreatedAt())
@@ -122,7 +141,13 @@ public class UserService {
     public Page<AuctionDto.MyPageListResponse> getMyAuctions(User user, String status, Pageable pageable) {
         if (status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)) {
             return auctionRepository.findBySeller(user, pageable)
-                    .map(this::convertToMyPageListResponse);
+                    .map(auction -> convertToMyPageListResponse(auction, auction.getCurrentPrice(), null, user));
+        }
+
+        // SOLD는 FINISHED와 동일하게 처리
+        if ("SOLD".equalsIgnoreCase(status)) {
+            return auctionRepository.findBySellerAndStatus(user, AuctionStatus.FINISHED, pageable)
+                    .map(auction -> convertToMyPageListResponse(auction, auction.getCurrentPrice(), null, user));
         }
 
         AuctionStatus auctionStatus;
@@ -133,20 +158,37 @@ public class UserService {
         }
 
         return auctionRepository.findBySellerAndStatus(user, auctionStatus, pageable)
-                .map(this::convertToMyPageListResponse);
+                .map(auction -> convertToMyPageListResponse(auction, auction.getCurrentPrice(), null, user));
     }
 
     // 6. 내가 입찰한 경매 목록
     @Transactional(readOnly = true)
-    public Page<AuctionDto.MyPageListResponse> getMyBids(User user, Pageable pageable) {
-        return bidRepository.findBidAuctionsByUser(user, pageable)
-                .map(auction -> convertToMyBidListResponse(auction, user));
+    public Page<AuctionDto.MyPageListResponse> getMyBids(User user, String status, Pageable pageable) {
+        Page<Auction> auctions;
+        
+        if (status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)) {
+            auctions = bidRepository.findBidAuctionsByUser(user, pageable);
+        } else if ("WON".equalsIgnoreCase(status)) {
+            auctions = auctionRepository.findByWinnerAndStatus(user, AuctionStatus.FINISHED, pageable);
+        } else if ("OUTBID".equalsIgnoreCase(status)) {
+            auctions = bidRepository.findOutbidAuctionsByUser(user, pageable);
+        } else {
+            AuctionStatus auctionStatus;
+            try {
+                auctionStatus = AuctionStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+            auctions = bidRepository.findBidAuctionsByUserAndStatus(user, auctionStatus, pageable);
+        }
+
+        return auctions.map(auction -> convertToMyBidListResponse(auction, user));
     }
 
     // 7. 관심 상품 목록 (수정됨)
     @Transactional(readOnly = true)
     public Page<AuctionDto.MyPageListResponse> getMyWishlist(User user, Pageable pageable) {
         return auctionLikeRepository.findByUser(user, pageable)
-                .map(like -> convertToMyPageListResponse(like.getAuction()));
+                .map(like -> convertToMyPageListResponse(like.getAuction(), like.getAuction().getCurrentPrice(), null, user));
     }
 }
