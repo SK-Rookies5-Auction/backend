@@ -6,6 +6,7 @@ import com.secureauction.auction.repository.AuctionRepository;
 import com.secureauction.auction.repository.BidRepository;
 import com.secureauction.auction.repository.PaymentRepository;
 import com.secureauction.auction.repository.UserRepository;
+import com.secureauction.auction.service.AuctionProcessService;
 import com.secureauction.auction.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,58 +24,26 @@ import java.util.List;
 public class AuctionScheduler {
 
     private final AuctionRepository auctionRepository;
-    private final BidRepository bidRepository;
-    private final PaymentRepository paymentRepository;
     private final NotificationService notificationService;
-    private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuctionProcessService auctionProcessService;
 
     @Scheduled(cron = "0 * * * * *") // 매 분 0초 실행
-    @Transactional
     public void closeExpiredAuctions() {
         log.info("Closing expired auctions...");
         LocalDateTime now = LocalDateTime.now();
-        
-        List<Auction> expiredAuctions = auctionRepository.findAllByStatusAndEndTimeBefore(AuctionStatus.LIVE, now);
-        
-        for (Auction auction : expiredAuctions) {
-            log.info("Auction {} expired. Processing closure...", auction.getId());
-            
-            // 1. 최고 입찰자 찾기
-            bidRepository.findFirstByAuctionOrderByPriceDesc(auction)
-                .ifPresentOrElse(
-                    highestBid -> {
-                        // 낙찰자 확정
-                        auction.finish(highestBid.getUser());
-                        
-                        // 결제 정보 생성 (PENDING 상태)
-                        Payment payment = Payment.builder()
-                                .user(highestBid.getUser())
-                                .auction(auction)
-                                .finalPrice(highestBid.getPrice())
-                                .status(PaymentStatus.PENDING)
-                                .build();
-                        paymentRepository.save(payment);
 
-                        // 낙찰 알림 전송 (AUCTION_WON 타입 사용)
-                        eventPublisher.publishEvent(new AuctionWonEvent(auction));
+        // 엔티티 전체 대신 ID 목록만 조회하여 메모리 부하 감소 및 targetIds 변수명 일치
+        List<Long> targetIds = auctionRepository.findIdsByStatusAndEndTimeBefore(AuctionStatus.LIVE, now);
 
-                        log.info("Auction {} won by user {}.", auction.getId(), highestBid.getUser().getId());
-                    },
-                    () -> {
-                        // 유찰 처리
-                        auction.updateStatus(AuctionStatus.FINISHED);
-
-                        // 판매자에게 유찰 알림
-                        notificationService.createNotification(
-                                auction.getSeller(),
-                                NotificationType.AUCTION_ENDED, // 유찰 알림
-                                String.format("[유찰] '%s' 경매가 입찰자 없이 종료되었습니다.", auction.getTitle()),
-                                "/product/" + auction.getId()
-                        );
-                        log.info("Auction {} finished with no bids.", auction.getId());
-                    }
-                );
+        for (Long auctionId : targetIds) {
+            try {
+                // 개별 경매 처리를 독립 트랜잭션으로 위임
+                auctionProcessService.processClosure(auctionId);
+            } catch (Exception e) {
+                // 특정 경매 처리 중 에러(DB 락, 네트워크 오류 등)가 나도 전체 스케줄러가 죽지 않고 넘어감
+                log.error("[Critical] 경매 마감 처리 실패 - ID: {}, 사유: {}", auctionId, e.getMessage());
+            }
         }
     }
 
