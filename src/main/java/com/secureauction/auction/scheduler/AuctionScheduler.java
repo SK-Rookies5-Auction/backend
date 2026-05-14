@@ -2,9 +2,7 @@ package com.secureauction.auction.scheduler;
 
 import com.secureauction.auction.domain.*;
 import com.secureauction.auction.repository.AuctionRepository;
-import com.secureauction.auction.repository.BidRepository;
-import com.secureauction.auction.repository.PaymentRepository;
-import com.secureauction.auction.repository.UserRepository;
+import com.secureauction.auction.service.AuctionProcessService;
 import com.secureauction.auction.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,13 +19,10 @@ import java.util.List;
 public class AuctionScheduler {
 
     private final AuctionRepository auctionRepository;
-    private final BidRepository bidRepository;
-    private final PaymentRepository paymentRepository;
     private final NotificationService notificationService;
-    private final UserRepository userRepository;
+    private final AuctionProcessService auctionProcessService;
 
     @Scheduled(cron = "0 * * * * *") // 매 분 0초 실행
-    @Transactional
     public void closeExpiredAuctions() {
         log.info("Closing expired auctions...");
         LocalDateTime now = LocalDateTime.now();
@@ -35,47 +30,11 @@ public class AuctionScheduler {
         List<Auction> expiredAuctions = auctionRepository.findAllByStatusAndEndTimeBefore(AuctionStatus.LIVE, now);
         
         for (Auction auction : expiredAuctions) {
-            log.info("Auction {} expired. Processing closure...", auction.getId());
-            
-            // 1. 최고 입찰자 찾기
-            bidRepository.findFirstByAuctionOrderByPriceDesc(auction)
-                .ifPresentOrElse(
-                    highestBid -> {
-                        // 낙찰자 확정
-                        auction.finish(highestBid.getUser());
-                        
-                        // 결제 정보 생성 (PENDING 상태)
-                        Payment payment = Payment.builder()
-                                .user(highestBid.getUser())
-                                .auction(auction)
-                                .finalPrice(highestBid.getPrice())
-                                .status(PaymentStatus.PENDING)
-                                .build();
-                        paymentRepository.save(payment);
-
-                        // 낙찰 알림 전송 (AUCTION_WON 타입 사용)
-                        notificationService.createNotification(
-                                highestBid.getUser(),
-                                NotificationType.AUCTION_WON,
-                                String.format("[낙찰] '%s' 경매에 최종 낙찰되셨습니다!", auction.getTitle()),
-                                "/auctions/" + auction.getId()
-                        );
-                        log.info("Auction {} won by user {}.", auction.getId(), highestBid.getUser().getId());
-                    },
-                    () -> {
-                        // 유찰 처리
-                        auction.updateStatus(AuctionStatus.FINISHED);
-
-                        // 판매자에게 유찰 알림
-                        notificationService.createNotification(
-                                auction.getSeller(),
-                                NotificationType.AUCTION_ENDED, // 유찰 알림
-                                String.format("[유찰] '%s' 경매가 입찰자 없이 종료되었습니다.", auction.getTitle()),
-                                "/auctions/" + auction.getId()
-                        );
-                        log.info("Auction {} finished with no bids.", auction.getId());
-                    }
-                );
+            try {
+                auctionProcessService.processClosure(auction.getId());
+            } catch (Exception e) {
+                log.error("Failed to process closure for auction {}: {}", auction.getId(), e.getMessage());
+            }
         }
     }
 
