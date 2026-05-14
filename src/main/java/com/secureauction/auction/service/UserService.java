@@ -60,8 +60,11 @@ public class UserService {
         if (currentUser != null) {
             // 내가 입찰자 혹은 위너인 경우
             if (auction.getStatus() == AuctionStatus.FINISHED) {
-                if (currentUser.equals(auction.getWinner())) {
+                if (auction.getWinner() != null && currentUser.getId().equals(auction.getWinner().getId())) {
                     statusStr = "WON";
+                } else if (myPrice != null) {
+                    // 종료되었는데 위너가 아니면 무조건 OUTBID
+                    statusStr = "OUTBID";
                 }
             } else if (auction.getStatus() == AuctionStatus.LIVE && myPrice != null) {
                 if (myPrice < currentPrice) {
@@ -69,7 +72,7 @@ public class UserService {
                 }
             }
             // 내가 판매자인 경우
-            if (currentUser.equals(auction.getSeller()) && auction.getStatus() == AuctionStatus.FINISHED) {
+            if (currentUser.getId().equals(auction.getSeller().getId()) && auction.getStatus() == AuctionStatus.FINISHED) {
                 statusStr = "SOLD";
             }
         }
