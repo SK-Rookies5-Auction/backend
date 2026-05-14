@@ -42,7 +42,7 @@ public class CommentService {
                     auction.getSeller(), // 수신자: 판매자
                     NotificationType.NEW_QUESTION, // 타입: 댓글 알림
                     String.format("[%s] 상품에 새로운 문의가 등록되었습니다.", auction.getTitle()), // 내용
-                    "/auctions/" + auctionId // 클릭 시 이동할 URL
+                    "/product/" + auctionId // 클릭 시 이동할 URL
             );
         }
 
@@ -75,7 +75,7 @@ public class CommentService {
                     parentComment.getUser(), // 수신자: 질문자
                     NotificationType.NEW_ANSWER, // 타입: 답변 등록
                     String.format("[답변 완료] 문의하신 '%s' 상품에 답변이 등록되었습니다.", auction.getTitle()),
-                    "/auctions/" + auctionId
+                    "/product/" + auctionId
             );
         }
 
