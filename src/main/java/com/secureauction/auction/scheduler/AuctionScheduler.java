@@ -1,16 +1,11 @@
 package com.secureauction.auction.scheduler;
 
 import com.secureauction.auction.domain.*;
-import com.secureauction.auction.event.AuctionWonEvent;
 import com.secureauction.auction.repository.AuctionRepository;
-import com.secureauction.auction.repository.BidRepository;
-import com.secureauction.auction.repository.PaymentRepository;
-import com.secureauction.auction.repository.UserRepository;
 import com.secureauction.auction.service.AuctionProcessService;
 import com.secureauction.auction.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +20,6 @@ public class AuctionScheduler {
 
     private final AuctionRepository auctionRepository;
     private final NotificationService notificationService;
-    private final ApplicationEventPublisher eventPublisher;
     private final AuctionProcessService auctionProcessService;
 
     @Scheduled(cron = "0 * * * * *") // 매 분 0초 실행
@@ -47,17 +41,15 @@ public class AuctionScheduler {
         }
     }
 
-    @Scheduled(cron = "0 0 * * * *") // 매 시간 정각에 실행 (예: 12시, 1시...)
+    @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void notifyClosingSoon() {
-        LocalDateTime targetTime = LocalDateTime.now().plusHours(1); // 지금부터 딱 1시간 뒤
-        // 마감 1시간 전인 경매들 조회
+        LocalDateTime targetTime = LocalDateTime.now().plusHours(1);
         List<Auction> closingAuctions = auctionRepository.findAllByStatusAndEndTimeBetween(
                 AuctionStatus.LIVE, LocalDateTime.now(), targetTime
         );
 
         for (Auction auction : closingAuctions) {
-            // 입찰자들에게 알림 전송
             auction.getBids().stream()
                     .map(Bid::getUser)
                     .distinct()
@@ -69,5 +61,4 @@ public class AuctionScheduler {
                     ));
         }
     }
-
 }
