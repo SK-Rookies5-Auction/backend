@@ -63,8 +63,7 @@ public class UserService {
                 if (auction.getWinner() != null && currentUser.getId().equals(auction.getWinner().getId())) {
                     statusStr = "WON";
                 } else if (myPrice != null) {
-                    // 종료되었는데 위너가 아니면 무조건 OUTBID
-                    statusStr = "OUTBID";
+                    statusStr = "LOST";
                 }
             } else if (auction.getStatus() == AuctionStatus.LIVE && myPrice != null) {
                 if (myPrice < currentPrice) {
@@ -181,6 +180,10 @@ public class UserService {
             auctions = bidRepository.findBidAuctionsByUser(user, pageable);
         } else if ("WON".equalsIgnoreCase(status)) {
             auctions = auctionRepository.findByWinnerAndStatus(user, AuctionStatus.FINISHED, pageable);
+        } else if ("LOST".equalsIgnoreCase(status)) {
+            auctions = bidRepository.findLostAuctionsByUser(user, pageable);
+        } else if ("PAID".equalsIgnoreCase(status) || "SHIPPING".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status)) {
+            auctions = auctionRepository.findByWinnerAndStatus(user, AuctionStatus.valueOf(status.toUpperCase()), pageable);
         } else if ("OUTBID".equalsIgnoreCase(status)) {
             auctions = bidRepository.findOutbidAuctionsByUser(user, pageable);
         } else {
