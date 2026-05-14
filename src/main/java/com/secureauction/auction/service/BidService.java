@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -29,7 +30,12 @@ public class BidService {
 
         // 2. 경매 상태 확인 (LIVE 인지)
         if (auction.getStatus() != AuctionStatus.LIVE) {
-            throw new BusinessException(ErrorCode.ALREADY_PROCESSED);
+            throw new BusinessException(ErrorCode.AUCTION_CLOSED);
+        }
+
+        // 2-1. 경매 시간 확인 (마감 시간이 지났는지)
+        if (auction.getEndTime().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.AUCTION_CLOSED);
         }
 
         // 3. 입찰 금액 확인 (price > current_price)
@@ -67,7 +73,7 @@ public class BidService {
                         previousBidder, // 수신자: 밀려난 1등
                         NotificationType.OUTBID, // 타입: 상위 입찰 발생
                         String.format("[%s] 상품에 더 높은 입찰가가 제시되었습니다.", auction.getTitle()),
-                        "/auctions/" + auctionId
+                        "/product/" + auctionId
                 );
             }
         }

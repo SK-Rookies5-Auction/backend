@@ -30,6 +30,16 @@ public class UserService {
 
     // --- 공통 DTO 변환 메서드 ---
     private AuctionDto.MyPageListResponse convertToMyPageListResponse(Auction auction) {
+        return convertToMyPageListResponse(auction, auction.getCurrentPrice(), null);
+    }
+
+    private AuctionDto.MyPageListResponse convertToMyBidListResponse(Auction auction, User user) {
+        Long highestBidPrice = bidRepository.findHighestPriceByAuction(auction);
+        Long myHighestBidPrice = bidRepository.findHighestPriceByAuctionAndUser(auction, user);
+        return convertToMyPageListResponse(auction, highestBidPrice, myHighestBidPrice);
+    }
+
+    private AuctionDto.MyPageListResponse convertToMyPageListResponse(Auction auction, Long currentPrice, Long myPrice) {
         String mainUrl = auction.getPictures().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsMain()))
                 .findFirst()
@@ -39,7 +49,8 @@ public class UserService {
         return AuctionDto.MyPageListResponse.builder()
                 .auctionId(auction.getId())
                 .title(auction.getTitle())
-                .currentPrice(auction.getCurrentPrice())
+                .currentPrice(currentPrice)
+                .myPrice(myPrice)
                 .status(auction.getStatus().name())
                 .viewCount(auction.getViewCount())
                 .likeCount(auction.getLikeCount())
@@ -119,7 +130,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public Page<AuctionDto.MyPageListResponse> getMyBids(User user, Pageable pageable) {
         return bidRepository.findBidAuctionsByUser(user, pageable)
-                .map(this::convertToMyPageListResponse);
+                .map(auction -> convertToMyBidListResponse(auction, user));
     }
 
     // 7. 관심 상품 목록 (수정됨)

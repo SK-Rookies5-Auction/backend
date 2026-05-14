@@ -12,7 +12,9 @@ import com.secureauction.auction.domain.User;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public interface AuctionRepository extends JpaRepository<Auction, Long> {
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+public interface AuctionRepository extends JpaRepository<Auction, Long>, JpaSpecificationExecutor<Auction> {
 
     long countByStatus(AuctionStatus status);
 
