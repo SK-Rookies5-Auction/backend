@@ -73,7 +73,11 @@ public class UserService {
             }
             // 내가 판매자인 경우
             if (currentUser.getId().equals(auction.getSeller().getId()) && auction.getStatus() == AuctionStatus.FINISHED) {
-                statusStr = "SOLD";
+                if (auction.getWinner() != null) {
+                    statusStr = "SOLD";
+                } else {
+                    statusStr = "FINISHED";
+                }
             }
         }
 
@@ -147,9 +151,13 @@ public class UserService {
                     .map(auction -> convertToMyPageListResponse(auction, auction.getCurrentPrice(), null, user));
         }
 
-        // SOLD는 FINISHED와 동일하게 처리
         if ("SOLD".equalsIgnoreCase(status)) {
-            return auctionRepository.findBySellerAndStatus(user, AuctionStatus.FINISHED, pageable)
+            return auctionRepository.findBySellerAndStatusAndWinnerIsNotNull(user, AuctionStatus.FINISHED, pageable)
+                    .map(auction -> convertToMyPageListResponse(auction, auction.getCurrentPrice(), null, user));
+        }
+
+        if ("FINISHED".equalsIgnoreCase(status)) {
+            return auctionRepository.findBySellerAndStatusAndWinnerIsNull(user, AuctionStatus.FINISHED, pageable)
                     .map(auction -> convertToMyPageListResponse(auction, auction.getCurrentPrice(), null, user));
         }
 

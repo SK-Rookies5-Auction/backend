@@ -37,6 +37,10 @@ public interface AuctionRepository extends JpaRepository<Auction, Long>, JpaSpec
 
     Page<Auction> findBySellerAndStatus(User seller, AuctionStatus status, Pageable pageable);
 
+    Page<Auction> findBySellerAndStatusAndWinnerIsNull(User seller, AuctionStatus status, Pageable pageable);
+
+    Page<Auction> findBySellerAndStatusAndWinnerIsNotNull(User seller, AuctionStatus status, Pageable pageable);
+
     long countBySeller(User seller);
 
     long countByWinner(User winner);
