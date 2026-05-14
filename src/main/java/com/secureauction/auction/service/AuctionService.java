@@ -146,6 +146,7 @@ public class AuctionService {
                     .mainPictureUrl(mainUrl)
                     .startTime(auction.getStartTime())
                     .endTime(auction.getEndTime())
+                    .bidCount(auction.getBids().size())
                     .isLiked(isLiked)
                     .sellerId(auction.getSeller().getId())
                     .build();
