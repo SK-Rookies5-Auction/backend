@@ -53,6 +53,7 @@ public class AuctionDto {
         private Long startPrice;
         private String status;
         private String category;
+        private String mainPictureUrl;
         private LocalDateTime startTime;
         private LocalDateTime endTime;
         private Integer viewCount;
@@ -118,6 +119,7 @@ public class AuctionDto {
         private String title;
         private Long currentPrice;
         private Long myPrice;
+        private Long finalPrice;
         private String status;
         private Integer viewCount;
         private Integer likeCount;
