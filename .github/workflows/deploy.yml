@@ -172,3 +172,4 @@ jobs:
       - name: Apply ArgoCD Application
         run: |
           kubectl apply -f infra-repo/argocd/backend-application.yml
+
