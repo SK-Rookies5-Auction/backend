@@ -62,6 +62,7 @@ public class AuctionDto {
         private Boolean isLiked;
         private Long sellerId;
         private String sellerNickname;
+        private LocalDateTime sellerJoinedAt;
         private Long winnerId;
         private String winnerNickname;
         private List<PictureInfo> pictures;
