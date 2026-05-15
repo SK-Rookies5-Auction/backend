@@ -80,6 +80,18 @@ public class NotificationController {
     }
 
     /**
+     * 알림 단건 삭제
+     */
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteNotification(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        notificationService.deleteNotification(id, userDetails.getUser());
+        return ApiResponse.success(null, "알림이 삭제되었습니다.");
+    }
+
+    /**
      * 읽은 알림 모두 삭제
      */
     @DeleteMapping("/read")
