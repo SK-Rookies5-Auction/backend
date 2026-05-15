@@ -42,6 +42,20 @@ public class NotificationService {
         notification.markAsRead();
     }
 
+    // 알림 단건 삭제
+    @Transactional
+    public void deleteNotification(Long id, User user) {
+        Notification notification = notificationRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        // 보안 체크: 내 알림인지 확인
+        if (!notification.getUser().getId().equals(user.getId())) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+
+        notificationRepository.delete(notification);
+    }
+
     // 모든 알림 읽음 처리 (일괄)
     @Transactional
     public void readAllNotifications(User user) {
