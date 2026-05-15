@@ -146,6 +146,7 @@ public class AuctionService {
                     .mainPictureUrl(mainUrl)
                     .startTime(auction.getStartTime())
                     .endTime(auction.getEndTime())
+                    .bidCount(auction.getBids().size())
                     .isLiked(isLiked)
                     .sellerId(auction.getSeller().getId())
                     .build();
@@ -212,6 +213,7 @@ public class AuctionService {
                 .isLiked(isLiked)
                 .sellerNickname(auction.getSeller().getNickname())
                 .sellerId(auction.getSeller().getId())
+                .sellerJoinedAt(auction.getSeller().getCreatedAt())
                 .winnerId(auction.getWinner() != null ? auction.getWinner().getId() : null)
                 .winnerNickname(auction.getWinner() != null ? auction.getWinner().getNickname() : null)
                 .pictures(pictureInfos)
